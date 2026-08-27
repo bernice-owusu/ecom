@@ -21,9 +21,44 @@
       "active": true
     }
   ],
-  "orders": [],
+  "orders": [
+    {
+      "id": "TB-383658",
+      "customer": {
+        "name": "Bernice Owusu",
+        "email": "adjoa.bernie@gmail.com",
+        "phone": "+233559184383"
+      },
+      "products": [
+        {
+          "id": "prod-resilience-hardcover",
+          "name": "RESILIENCE (Hard Copy)",
+          "format": "Hard Copy",
+          "price": 0.3,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 0.3,
+      "deliveryFee": 25,
+      "total": 25.3,
+      "paymentStatus": "Pending",
+      "orderStatus": "Payment Received",
+      "date": "2026-08-27T10:48:21.704Z"
+    }
+  ],
   "payments": [],
-  "deliveries": [],
+  "deliveries": [
+    {
+      "orderId": "TB-383658",
+      "country": "Ghana",
+      "region": "Greater Accra",
+      "city": "Accra",
+      "address": "North Kaneshie",
+      "additionalInfo": "",
+      "postalCode": "",
+      "status": "Processing"
+    }
+  ],
   "entitlements": [
     {
       "orderId": "TB-702185",

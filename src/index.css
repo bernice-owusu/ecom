@@ -244,3 +244,32 @@ p {
     padding-bottom: 10px;
   }
 }
+
+/* Responsive Utilities & Layout Helpers */
+.format-selector-group {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+@media only screen and (max-width: 576px) {
+  .format-selector-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .btn {
+    width: 100%;
+    padding: 14px 20px;
+  }
+}
+
+@media only screen and (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+  h2 {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+  }
+}
