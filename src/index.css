@@ -21,7 +21,7 @@
 
 body {
   font-family: var(--font-primary);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.7;
   color: var(--color-medium);
   background: #ffffff;
@@ -89,7 +89,7 @@ h3 {
 
 p {
   margin-bottom: 20px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 
@@ -153,6 +153,14 @@ p {
   }
 }
 
+/* Store page: single column by default, two on wide screens */
+.store-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: center;
+}
+
 /* Footer layout */
 .footer {
   border-top: 1px solid var(--color-border);
@@ -166,49 +174,164 @@ p {
   letter-spacing: 1px;
 }
 
-/* Large Screens Full Width and No-Scroll Adjustments */
-@media only screen and (min-width: 1024px) {
-
-  main,
-  .footer {
-    max-width: 1440px;
-    /* Expand content max width */
-    width: 90%;
-  }
-
+/* Tablet/Medium: comfortable, modern layout (scroll allowed) */
+@media only screen and (min-width: 768px) {
   .app-container {
-    padding: 40px 80px;
-    display: flex;
-    flex-direction: column;
+    padding: 28px 40px;
   }
 
   main {
-    margin: 40px auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    width: 100%;
+  }
+}
+
+/* Medium screens: side-by-side cover + info */
+@media only screen and (min-width: 900px) and (max-width: 1199px) {
+  .main {
+    margin: 0 auto;
+    max-width: 1100px;
   }
 
-  .footer {
-    margin: 40px auto 0 auto;
-    padding-top: 20px;
-    padding-bottom: 10px;
+  .store-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-items: center;
+    gap: 40px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .store-cover {
+    text-align: center;
+  }
+
+  .store-cover img {
+    max-height: 480px;
+  }
+}
+
+/* Large Screens: balanced side-by-side layout (scroll allowed if needed) */
+@media only screen and (min-width: 1200px) {
+  .app-container {
+    padding: 40px 60px;
+  }
+
+  main {
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .store-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 60px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .store-cover {
+    text-align: center;
+  }
+
+  .store-cover img {
+    max-height: 600px;
   }
 }
 
 /* Responsive Utilities & Layout Helpers */
 .format-selector-group {
-  display: flex;
-  gap: 15px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
-@media only screen and (max-width: 576px) {
+.format-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 18px 12px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  font-family: var(--font-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--color-dark);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.format-card:hover {
+  border-color: var(--color-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.format-card .format-price {
+  font-family: var(--font-primary);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.3px;
+  color: var(--color-medium);
+  opacity: 0.85;
+}
+
+.format-card.active {
+  border-color: var(--color-accent);
+  background: #f5f5f5;
+  box-shadow: 0 8px 24px rgba(15, 15, 15, 0.12);
+  color: var(--color-accent);
+}
+
+.format-card.active .format-price {
+  color: var(--color-accent);
+  opacity: 1;
+}
+
+.format-card .format-check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  transform: scale(0);
+  transition: transform 0.2s ease;
+}
+
+.format-card.active .format-check {
+  transform: scale(1);
+}
+
+/* Three-across format cards once there is room */
+@media only screen and (min-width: 576px) {
   .format-selector-group {
-    flex-direction: column;
-    gap: 10px;
+    grid-template-columns: repeat(3, 1fr);
   }
-  
+}
+
+/* Two-across format cards on narrow medium screens (2-col store) */
+@media only screen and (min-width: 900px) and (max-width: 1019px) {
+  .format-selector-group {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Full-width buttons on small screens */
+@media only screen and (max-width: 700px) {
   .btn {
     width: 100%;
     padding: 14px 20px;

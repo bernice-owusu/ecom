@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import fs from 'fs';
 import dotenv from 'dotenv';
 import { readDb, writeDb } from './database.js';
 
@@ -138,11 +137,11 @@ app.post('/api/payment/simulate', (req, res) => {
   // Update order payment status
   order.paymentStatus = status || 'Successful';
   
-  // If payment succeeded and there is an audiobook, create Entitlement
-  const hasAudiobook = order.products.some(p => p.format === 'Audiobook');
+  // If payment succeeded and there is a digital product, create Entitlement
+  const isDigital = order.products.some(p => p.format === 'Audiobook' || p.format === 'Soft Copy');
   let downloadToken = null;
 
-  if ((status === 'Successful' || !status) && hasAudiobook) {
+  if ((status === 'Successful' || !status) && isDigital) {
     downloadToken = 'TOK-' + Math.random().toString(36).substr(2, 16);
     db.entitlements.push({
       orderId,
@@ -197,9 +196,9 @@ app.post('/api/payment/verify', async (req, res) => {
     db.payments.push(newPayment);
     order.paymentStatus = 'Successful';
 
-    const hasAudiobook = order.products.some(p => p.format === 'Audiobook');
+    const isDigital = order.products.some(p => p.format === 'Audiobook' || p.format === 'Soft Copy');
     let downloadToken = null;
-    if (hasAudiobook) {
+    if (isDigital) {
       downloadToken = 'TOK-' + Math.random().toString(36).substr(2, 16);
       db.entitlements.push({
         orderId,
@@ -258,9 +257,9 @@ app.post('/api/payment/verify', async (req, res) => {
     db.payments.push(newPayment);
     order.paymentStatus = 'Successful';
 
-    const hasAudiobook = order.products.some(p => p.format === 'Audiobook');
+    const isDigital = order.products.some(p => p.format === 'Audiobook' || p.format === 'Soft Copy');
     let downloadToken = null;
-    if (hasAudiobook) {
+    if (isDigital) {
       downloadToken = 'TOK-' + Math.random().toString(36).substr(2, 16);
       db.entitlements.push({
         orderId,
@@ -288,7 +287,7 @@ app.post('/api/payment/verify', async (req, res) => {
 });
 
 
-// Secure Audiobook Download Endpoint
+// Secure Digital Download Endpoint
 app.get('/api/audiobooks/download', (req, res) => {
   const { token } = req.query;
   if (!token) {
@@ -316,27 +315,16 @@ app.get('/api/audiobooks/download', (req, res) => {
   entitlement.downloadCount += 1;
   writeDb(db);
 
-  // Secure redirect or fallback streaming based on environment configuration
-  const vercelBlobToken = process.env.BLOB_READ_WRITE_TOKEN;
-  const isVercelBlobConfigured = vercelBlobToken && !vercelBlobToken.includes('your_vercel_blob_token');
+  // Redirect to the storage URL configured in env
+  const order = db.orders.find(o => o.id === entitlement.orderId);
+  const isSoftCopy = order?.products.some(p => p.format === 'Soft Copy');
 
-  if (isVercelBlobConfigured) {
-    const secureAudiobookUrl = process.env.AUDIOBOOK_STORAGE_URL || 'https://your-app-id.public.blob.vercel-storage.com/resilience_audiobook.mp3';
-    return res.redirect(secureAudiobookUrl);
+  const secureUrl = (isSoftCopy ? process.env.EBOOK_STORAGE_URL : process.env.AUDIOBOOK_STORAGE_URL);
+  if (!secureUrl) {
+    return res.status(500).send('<h1>Error: Download storage is not configured</h1>');
   }
 
-  // Fallback to local mock file download for development
-  const audiobookFile = path.join(process.cwd(), 'server', 'audiobooks', 'resilience_audiobook.mp3');
-  
-  if (!fs.existsSync(audiobookFile)) {
-    return res.status(404).send('<h1>Error: Audiobook file template is missing on server</h1>');
-  }
-
-  res.setHeader('Content-Disposition', 'attachment; filename="Resilience_Thomas_Baafi.mp3"');
-  res.setHeader('Content-Type', 'audio/mpeg');
-  
-  const stream = fs.createReadStream(audiobookFile);
-  stream.pipe(res);
+  return res.redirect(secureUrl);
 });
 
 // Admin Dashboard stats & metrics endpoint

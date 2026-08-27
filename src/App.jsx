@@ -217,8 +217,8 @@ function App() {
       <main>
         {/* SCREEN 1: Store / Product Page */}
         {currentPage === 'store' && (
-          <div className="grid grid-2" style={{ alignItems: 'center' }}>
-            <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div className="store-grid" >
+            <div className="store-cover" style={{ textAlign: 'center', padding: '20px' }}>
               <img
                 src="/img/resilience_cover.png"
                 alt="Resilience Book Cover"
@@ -226,60 +226,77 @@ function App() {
                 style={{
                   maxWidth: '100%',
                   maxHeight: '480px',
+                  width: 'auto',
                   boxShadow: '0 15px 35px rgba(0,0,0,0.15)',
                   border: '1px solid #ddd'
                 }}
               />
             </div>
-            <div style={{ textAlign: 'left', padding: '20px' }}>
+            <div className="store-info" style={{ textAlign: 'left', padding: '20px' }}>
               <h1>RESILIENCE</h1>
               <h2>By Thomas Akwasi Baafi</h2>
-              <p style={{ fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--color-accent)' }}>
+              <p style={{ fontStyle: 'italic', fontSize: '1.25rem', color: 'var(--color-accent)' }}>
                 A Journey of Grit, Growth, and Innovation
               </p>
-              <p>
+              <p style={{ fontSize: '17px' }}>
                 Resilience is the gripping autobiography of Thomas Akwasi Baafi. It charts his remarkable path from a small, remote village in Ghana, through the challenges of growing up in slums, to scaling the heights of the enterprise software ecosystem in West Africa as the founder and CEO of Bsystems.
               </p>
 
-              <div style={{ margin: '30px 0', borderTop: '1px solid #eee', paddingTop: '20px' }}>
+              <div style={{ margin: '24px 0', borderTop: '1px solid #eee', paddingTop: '18px' }}>
                 <h3 style={{ marginBottom: '15px' }}>Choose Format</h3>
                 <div className="format-selector-group">
                   <button
-                    className={`btn ${selectedFormat === 'Hard Copy' ? '' : 'btn-secondary'}`}
-                    style={{ flex: 1 }}
+                    type="button"
+                    className={`format-card ${selectedFormat === 'Hard Copy' ? 'active' : ''}`}
                     onClick={() => handleFormatChange('Hard Copy')}
                   >
+                    <span className="format-check">✓</span>
                     Hard Copy
-                    <div style={{ fontSize: '10px', textTransform: 'none', fontWeight: 'normal', marginTop: '4px' }}>
-                      Physical delivery • GHS 0.30
-                    </div>
+                    <span className="format-price">Physical delivery • GHS 0.30</span>
                   </button>
                   <button
-                    className={`btn ${selectedFormat === 'Audiobook' ? '' : 'btn-secondary'}`}
-                    style={{ flex: 1 }}
+                    type="button"
+                    className={`format-card ${selectedFormat === 'Audiobook' ? 'active' : ''}`}
                     onClick={() => handleFormatChange('Audiobook')}
                   >
+                    <span className="format-check">✓</span>
                     Audiobook
-                    <div style={{ fontSize: '10px', textTransform: 'none', fontWeight: 'normal', marginTop: '4px' }}>
-                      Instant download • GHS 0.20
-                    </div>
+                    <span className="format-price">Instant download • GHS 0.20</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`format-card ${selectedFormat === 'Soft Copy' ? 'active' : ''}`}
+                    onClick={() => handleFormatChange('Soft Copy')}
+                  >
+                    <span className="format-check">✓</span>
+                    Soft Copy
+                    <span className="format-price">eBook PDF • GHS 0.15</span>
                   </button>
                 </div>
               </div>
 
               <div style={{ background: '#fcfcfc', padding: '20px', border: '1px solid #eee', marginBottom: '30px' }}>
-                {selectedFormat === 'Hard Copy' ? (
+                {selectedFormat === 'Hard Copy' && (
                   <>
                     <h3>Hard Copy Edition</h3>
-                    <p style={{ margin: 0, fontSize: '14px' }}>
-                      Premium printed version of Resilience. Dispatched to addresses across Ghana (Accra flat rate GHS 0.20). Expect delivery in 2-3 business days.
+                    <p style={{ margin: 0, fontSize: '16px' }}>
+                      Premium printed version of Resilience. Dispatched to addresses across Ghana (Accra flat rate GHS {(cart?.deliveryFee || 0.10).toFixed(2)}). Expect delivery in 2-3 business days.
                     </p>
                   </>
-                ) : (
+                )}
+                {selectedFormat === 'Audiobook' && (
                   <>
                     <h3>Digital Audiobook Edition</h3>
-                    <p style={{ margin: 0, fontSize: '14px' }}>
+                    <p style={{ margin: 0, fontSize: '16px' }}>
                       Digital MP3 download package. Playable on any device. Link is generated instantly on payment confirmation.
+                    </p>
+                  </>
+                )}
+                {selectedFormat === 'Soft Copy' && (
+                  <>
+                    <h3>Digital eBook Edition</h3>
+                    <p style={{ margin: 0, fontSize: '16px' }}>
+                      Digital PDF & ePub eBook package. Readable on Kindle, tablets, phones, and computers. Link is generated instantly on payment confirmation.
                     </p>
                   </>
                 )}
@@ -482,18 +499,24 @@ function App() {
               <p style={{ fontSize: '14px', marginBottom: '10px' }}><strong>Email:</strong> {custEmail}</p>
               <p style={{ fontSize: '14px', marginBottom: '20px' }}><strong>Amount Paid:</strong> GHS {((cart?.price || 0) + (selectedFormat === 'Hard Copy' ? (cart?.deliveryFee || 0.10) : 0)).toFixed(2)}</p>
 
-              {selectedFormat === 'Hard Copy' ? (
+              {selectedFormat === 'Hard Copy' && (
                 <div style={{ background: '#f7fff7', border: '1px solid #d4eed4', padding: '15px', fontSize: '13px', color: '#2b542c' }}>
                   <strong>Shipping Status:</strong> Your order details and delivery info have been routed to our fulfillment department. We will dispatch the physical book to <strong>{address}, {city}</strong> within 48 hours. A dispatch courier will contact you on <strong>{custPhone}</strong>.
                 </div>
-              ) : (
+              )}
+              {selectedFormat === 'Audiobook' && (
                 <div style={{ background: '#f7faff', border: '1px solid #d4e3ee', padding: '15px', fontSize: '13px', color: '#245269' }}>
                   <strong>Audiobook Entitlement:</strong> Download is authorized. Use the download link below. This download token is linked to your email address and can be accessed up to 5 times.
                 </div>
               )}
+              {selectedFormat === 'Soft Copy' && (
+                <div style={{ background: '#f7faff', border: '1px solid #d4e3ee', padding: '15px', fontSize: '13px', color: '#245269' }}>
+                  <strong>eBook Entitlement:</strong> Download is authorized. Use the download link below. This download token is linked to your email address and can be accessed up to 5 times.
+                </div>
+              )}
             </div>
 
-            {selectedFormat === 'Audiobook' && downloadToken && (
+            {(selectedFormat === 'Audiobook' || selectedFormat === 'Soft Copy') && downloadToken && (
               <div style={{ marginBottom: '40px' }}>
                 <a
                   href={`${API_URL}/audiobooks/download?token=${downloadToken}`}
@@ -501,7 +524,7 @@ function App() {
                   style={{ width: '100%', padding: '15px 0', fontSize: '14px' }}
                 >
                   <span className="ion-android-download" style={{ marginRight: '10px' }}></span>
-                  Download Audiobook
+                  Download {selectedFormat === 'Soft Copy' ? 'eBook (PDF)' : 'Audiobook (MP3)'}
                 </a>
               </div>
             )}

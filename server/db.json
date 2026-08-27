@@ -19,11 +19,21 @@
       "price": 0.2,
       "currency": "GHS",
       "active": true
+    },
+    {
+      "id": "prod-resilience-softcopy",
+      "name": "RESILIENCE (Soft Copy)",
+      "subtitle": "A Journey of Grit, Growth, and Innovation",
+      "description": "Complete digital eBook edition in PDF and ePub formats. Link is generated instantly on payment confirmation.",
+      "format": "Soft Copy",
+      "price": 0.15,
+      "currency": "GHS",
+      "active": true
     }
   ],
   "orders": [
     {
-      "id": "TB-725392",
+      "id": "TB-254061",
       "customer": {
         "name": "Bernice Owusu",
         "email": "adjoa.bernie@gmail.com",
@@ -31,33 +41,85 @@
       },
       "products": [
         {
-          "id": "prod-resilience-hardcover",
-          "name": "RESILIENCE (Hard Copy)",
-          "format": "Hard Copy",
-          "price": 0.3,
+          "id": "prod-resilience-audiobook",
+          "name": "RESILIENCE (Audiobook)",
+          "format": "Audiobook",
+          "price": 0.2,
           "quantity": 1
         }
       ],
-      "subtotal": 0.3,
-      "deliveryFee": 0.1,
-      "total": 0.4,
-      "paymentStatus": "Pending",
-      "orderStatus": "Payment Received",
-      "date": "2026-08-27T11:26:41.888Z"
-    }
-  ],
-  "payments": [],
-  "deliveries": [
+      "subtotal": 0.2,
+      "deliveryFee": 0,
+      "total": 0.2,
+      "paymentStatus": "Successful",
+      "orderStatus": "Completed",
+      "date": "2026-08-27T16:27:33.068Z"
+    },
     {
-      "orderId": "TB-725392",
-      "country": "Ghana",
-      "region": "Greater Accra",
-      "city": "Accra",
-      "address": "North Kaneshie",
-      "additionalInfo": "",
-      "postalCode": "",
-      "status": "Processing"
+      "id": "TB-511906",
+      "customer": {
+        "name": "Bernice Owusu",
+        "email": "adjoa.bernie@gmail.com",
+        "phone": "+233559184383"
+      },
+      "products": [
+        {
+          "id": "prod-resilience-softcopy",
+          "name": "RESILIENCE (Soft Copy)",
+          "format": "Soft Copy",
+          "price": 0.15,
+          "quantity": 1
+        }
+      ],
+      "subtotal": 0.15,
+      "deliveryFee": 0,
+      "total": 0.15,
+      "paymentStatus": "Successful",
+      "orderStatus": "Completed",
+      "date": "2026-08-27T16:29:05.040Z"
     }
   ],
-  "entitlements": []
+  "payments": [
+    {
+      "id": "PAY-388564",
+      "orderId": "TB-254061",
+      "provider": "Paystack",
+      "transactionReference": "TB-254061",
+      "amount": 0.2,
+      "currency": "GHS",
+      "status": "Successful",
+      "timestamp": "2026-08-27T16:28:19.889Z"
+    },
+    {
+      "id": "PAY-386978",
+      "orderId": "TB-511906",
+      "provider": "Paystack",
+      "transactionReference": "TB-511906",
+      "amount": 0.15,
+      "currency": "GHS",
+      "status": "Successful",
+      "timestamp": "2026-08-27T16:29:38.809Z"
+    }
+  ],
+  "deliveries": [],
+  "entitlements": [
+    {
+      "orderId": "TB-254061",
+      "customerEmail": "adjoa.bernie@gmail.com",
+      "downloadToken": "TOK-5oafohdffjj",
+      "downloadCount": 1,
+      "maxDownloads": 5,
+      "expiration": "2026-09-03T16:28:19.889Z",
+      "active": true
+    },
+    {
+      "orderId": "TB-511906",
+      "customerEmail": "adjoa.bernie@gmail.com",
+      "downloadToken": "TOK-vzxbraevtrf",
+      "downloadCount": 1,
+      "maxDownloads": 5,
+      "expiration": "2026-09-03T16:29:38.809Z",
+      "active": true
+    }
+  ]
 }

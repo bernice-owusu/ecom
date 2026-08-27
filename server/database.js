@@ -28,6 +28,16 @@ const initialData = {
       price: 0.2,
       currency: "GHS",
       active: true
+    },
+    {
+      id: "prod-resilience-softcopy",
+      name: "RESILIENCE (Soft Copy)",
+      subtitle: "A Journey of Grit, Growth, and Innovation",
+      description: "Complete digital eBook edition in PDF and ePub formats. Link is generated instantly on payment confirmation.",
+      format: "Soft Copy",
+      price: 0.15,
+      currency: "GHS",
+      active: true
     }
   ],
   orders: [],
