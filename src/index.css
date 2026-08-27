@@ -1,0 +1,246 @@
+/* Pure, Elegant Editorial styling matching thomasbaafi.com */
+:root {
+  --font-primary: 'Raleway', sans-serif;
+  --font-secondary: 'Montserrat', sans-serif;
+  --color-dark: #1f1f1f;
+  --color-medium: #5f5f5f;
+  --color-light: #f9f9f9;
+  --color-accent: #0f0f0f;
+  --color-border: #e0e0e0;
+  --color-success: #2e7d32;
+  --color-error: #c62828;
+  --spacing-base: 16px;
+  --transition-speed: 0.3s;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-primary);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-medium);
+  background: #ffffff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Base Layout Wrapper */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px;
+}
+
+@media only screen and (max-width: 768px) {
+  .app-container {
+    padding: 15px;
+  }
+}
+
+/* Main Content Body */
+main {
+  flex: 1;
+  max-width: 1100px;
+  width: 100%;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+
+@media only screen and (max-width: 768px) {
+  main {
+    margin: 30px auto;
+  }
+}
+
+/* Premium Typography styles */
+h1 {
+  font-family: var(--font-secondary);
+  font-weight: 800;
+  font-size: 2.8rem;
+  letter-spacing: 2px;
+  color: var(--color-dark);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+h2 {
+  font-family: var(--font-primary);
+  font-weight: 300;
+  font-size: 1.3rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--color-medium);
+  margin-bottom: 30px;
+}
+
+h3 {
+  font-family: var(--font-secondary);
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  color: var(--color-dark);
+  margin-bottom: 15px;
+}
+
+p {
+  margin-bottom: 20px;
+  font-size: 15px;
+}
+
+/* Navigation */
+/* .navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  padding: 20px 0;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+} */
+
+.logo-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.logo-text {
+  font-family: var(--font-secondary);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--color-dark);
+  letter-spacing: 1px;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 30px;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--color-medium);
+  font-family: var(--font-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color var(--transition-speed);
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--color-dark);
+  border-bottom: 1px solid var(--color-dark);
+}
+
+/* Premium Buttons & Interactive Elements */
+.btn {
+  display: inline-block;
+  background: var(--color-accent);
+  color: #fff;
+  border: 1px solid var(--color-accent);
+  padding: 12px 30px;
+  font-family: var(--font-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn:hover {
+  background: transparent;
+  color: var(--color-dark);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-dark);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-dark);
+  background: #fcfcfc;
+}
+
+/* Micro-animations */
+.hover-lift {
+  transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Layout Utilities */
+.grid {
+  display: grid;
+  gap: 30px;
+}
+
+.grid-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media only screen and (max-width: 768px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Footer layout */
+.footer {
+  border-top: 1px solid var(--color-border);
+  padding-top: 40px;
+  padding-bottom: 20px;
+  max-width: 1100px;
+  width: 100%;
+  margin: 40px auto 0 auto;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+/* Large Screens Full Width and No-Scroll Adjustments */
+@media only screen and (min-width: 1024px) {
+
+  main,
+  .navbar,
+  .footer {
+    max-width: 1440px;
+    /* Expand content max width */
+    width: 90%;
+  }
+
+  .app-container {
+    padding: 40px 80px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  main {
+    margin: 40px auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .footer {
+    margin: 40px auto 0 auto;
+    padding-top: 20px;
+    padding-bottom: 10px;
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "products": [
+    {
+      "id": "prod-resilience-hardcover",
+      "name": "RESILIENCE (Hard Copy)",
+      "subtitle": "A Journey of Grit, Growth, and Innovation",
+      "description": "Thomas Akwasi Baafi's inspiring journey from a remote village in Ghana to a pioneering tech leader. Physical hardcover edition.",
+      "format": "Hard Copy",
+      "price": 0.3,
+      "currency": "GHS",
+      "active": true
+    },
+    {
+      "id": "prod-resilience-audiobook",
+      "name": "RESILIENCE (Audiobook)",
+      "subtitle": "A Journey of Grit, Growth, and Innovation",
+      "description": "Complete unabridged digital audiobook read by the author. Includes access to instant download.",
+      "format": "Audiobook",
+      "price": 0.2,
+      "currency": "GHS",
+      "active": true
+    }
+  ],
+  "orders": [],
+  "payments": [],
+  "deliveries": [],
+  "entitlements": [
+    {
+      "orderId": "TB-702185",
+      "customerEmail": "john.doe@example.com",
+      "downloadToken": "TOK-d9jwwxb6o2h",
+      "downloadCount": 2,
+      "maxDownloads": 5,
+      "expiration": "2026-09-03T09:04:48.567Z",
+      "active": true
+    }
+  ]
+}
