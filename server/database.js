@@ -14,7 +14,8 @@ const initialData = {
       subtitle: "A Journey of Grit, Growth, and Innovation",
       description: "Thomas Akwasi Baafi's inspiring journey from a remote village in Ghana to a pioneering tech leader. Physical hardcover edition.",
       format: "Hard Copy",
-      price: 150,
+      price: 0.3,
+      deliveryFee: 0.1,
       currency: "GHS",
       active: true
     },
@@ -24,7 +25,7 @@ const initialData = {
       subtitle: "A Journey of Grit, Growth, and Innovation",
       description: "Complete unabridged digital audiobook read by the author. Includes access to instant download.",
       format: "Audiobook",
-      price: 80,
+      price: 0.2,
       currency: "GHS",
       active: true
     }

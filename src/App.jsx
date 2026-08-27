@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import './index.css';
 
 // Config API domain (adjust if server is running elsewhere)
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || (
+  typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:5000/api'
+    : '/api'
+);
+
 
 function App() {
   const [currentPage, setCurrentPage] = useState('store'); // store, checkout, success, audiobook, admin
@@ -238,7 +243,7 @@ function App() {
 
               <div style={{ margin: '30px 0', borderTop: '1px solid #eee', paddingTop: '20px' }}>
                 <h3 style={{ marginBottom: '15px' }}>Choose Format</h3>
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+                <div className="format-selector-group">
                   <button
                     className={`btn ${selectedFormat === 'Hard Copy' ? '' : 'btn-secondary'}`}
                     style={{ flex: 1 }}
@@ -420,19 +425,19 @@ function App() {
                     <div style={{ background: '#fbfbfb', padding: '25px', border: '1px solid #eee' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
                         <span><strong>RESILIENCE — {cart?.format}</strong></span>
-                        <span>GHS {cart?.price.toFixed(2)}</span>
+                        <span>GHS {(cart?.price || 0).toFixed(2)}</span>
                       </div>
 
                       {selectedFormat === 'Hard Copy' && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', color: '#777', fontSize: '14px' }}>
                           <span>Flat Delivery Fee</span>
-                          <span>GHS 0.20</span>
+                          <span>GHS {(cart?.deliveryFee || 0.10).toFixed(2)}</span>
                         </div>
                       )}
 
                       <div style={{ borderTop: '1px solid #ddd', paddingTop: '15px', marginTop: '15px', display: 'flex', justifyContent: 'space-between', fontSize: '18px' }}>
                         <strong>Total Amount</strong>
-                        <strong>GHS {((cart?.price || 0) + (selectedFormat === 'Hard Copy' ? 0.20 : 0)).toFixed(2)}</strong>
+                        <strong>GHS {((cart?.price || 0) + (selectedFormat === 'Hard Copy' ? (cart?.deliveryFee || 0.10) : 0)).toFixed(2)}</strong>
                       </div>
 
 
@@ -475,7 +480,7 @@ function App() {
               <p style={{ fontSize: '14px', marginBottom: '10px' }}><strong>Format:</strong> {selectedFormat}</p>
               <p style={{ fontSize: '14px', marginBottom: '10px' }}><strong>Recipient:</strong> {custName}</p>
               <p style={{ fontSize: '14px', marginBottom: '10px' }}><strong>Email:</strong> {custEmail}</p>
-              <p style={{ fontSize: '14px', marginBottom: '20px' }}><strong>Amount Paid:</strong> GHS {((cart?.price || 0) + (selectedFormat === 'Hard Copy' ? 25 : 0)).toFixed(2)}</p>
+              <p style={{ fontSize: '14px', marginBottom: '20px' }}><strong>Amount Paid:</strong> GHS {((cart?.price || 0) + (selectedFormat === 'Hard Copy' ? (cart?.deliveryFee || 0.10) : 0)).toFixed(2)}</p>
 
               {selectedFormat === 'Hard Copy' ? (
                 <div style={{ background: '#f7fff7', border: '1px solid #d4eed4', padding: '15px', fontSize: '13px', color: '#2b542c' }}>

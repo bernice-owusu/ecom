@@ -67,8 +67,10 @@ app.post('/api/checkout', (req, res) => {
     });
   }
 
-  const isPhysical = orderedProducts.some(p => p.format === 'Hard Copy');
-  const deliveryFee = isPhysical ? 0.2 : 0; // Default flat rate shipping for Ghana/int
+  const physicalItem = orderedProducts.find(p => p.format === 'Hard Copy');
+  const isPhysical = !!physicalItem;
+  const hardCopyProduct = db.products.find(p => p.format === 'Hard Copy');
+  const deliveryFee = physicalItem ? (hardCopyProduct?.deliveryFee || 0.1) : 0;
   const total = subtotal + deliveryFee;
 
   const newOrder = {

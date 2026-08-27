@@ -23,7 +23,7 @@
   ],
   "orders": [
     {
-      "id": "TB-383658",
+      "id": "TB-725392",
       "customer": {
         "name": "Bernice Owusu",
         "email": "adjoa.bernie@gmail.com",
@@ -39,17 +39,17 @@
         }
       ],
       "subtotal": 0.3,
-      "deliveryFee": 25,
-      "total": 25.3,
+      "deliveryFee": 0.1,
+      "total": 0.4,
       "paymentStatus": "Pending",
       "orderStatus": "Payment Received",
-      "date": "2026-08-27T10:48:21.704Z"
+      "date": "2026-08-27T11:26:41.888Z"
     }
   ],
   "payments": [],
   "deliveries": [
     {
-      "orderId": "TB-383658",
+      "orderId": "TB-725392",
       "country": "Ghana",
       "region": "Greater Accra",
       "city": "Accra",
@@ -59,15 +59,5 @@
       "status": "Processing"
     }
   ],
-  "entitlements": [
-    {
-      "orderId": "TB-702185",
-      "customerEmail": "john.doe@example.com",
-      "downloadToken": "TOK-d9jwwxb6o2h",
-      "downloadCount": 2,
-      "maxDownloads": 5,
-      "expiration": "2026-09-03T09:04:48.567Z",
-      "active": true
-    }
-  ]
+  "entitlements": []
 }
