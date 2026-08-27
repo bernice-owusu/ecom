@@ -37,24 +37,40 @@ const initialData = {
 };
 
 // Ensure db directory exists
-const dir = path.dirname(DB_FILE);
-if (!fs.existsSync(dir)) {
-  fs.mkdirSync(dir, { recursive: true });
+try {
+  const dir = path.dirname(DB_FILE);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  if (!fs.existsSync(DB_FILE)) {
+    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2));
+  }
+} catch (err) {
+  console.warn('DB folder initialization skipped (read-only filesystem on Vercel)');
 }
 
-if (!fs.existsSync(DB_FILE)) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2));
-}
+let memoryDb = null;
 
 export function readDb() {
+  if (memoryDb) {
+    return memoryDb;
+  }
   try {
     const data = fs.readFileSync(DB_FILE, 'utf8');
-    return JSON.parse(data);
+    memoryDb = JSON.parse(data);
+    return memoryDb;
   } catch (err) {
+    memoryDb = initialData;
     return initialData;
   }
 }
 
 export function writeDb(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  memoryDb = data;
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.warn('Database file update skipped (read-only filesystem on Vercel)');
+  }
 }
