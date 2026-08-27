@@ -383,6 +383,10 @@ app.post('/api/admin/orders/:id/status', (req, res) => {
   res.json(order);
 });
 
-app.listen(PORT, () => {
-  console.log(`Express API Server running on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Express API Server running on port ${PORT}`);
+  });
+}
+
+export default app;
