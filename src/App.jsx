@@ -503,6 +503,11 @@ function App() {
                 orders: m.orders.map((o) =>
                   o.id === updated.id ? updated : o,
                 ),
+                deliveries: m.deliveries.map((d) =>
+                  d.orderId === updated.id
+                    ? { ...d, status: updated.orderStatus }
+                    : d,
+                ),
               }
             : m,
         );
