@@ -1,6 +1,12 @@
 import nodemailer from "nodemailer";
 
-const FROM_EMAIL = "bernyx.owusu@gmail.com";
+function getFromEmail() {
+  return (
+    process.env.DEFAULT_FROM_EMAIL ||
+    process.env.EMAIL_HOST_USER ||
+    "info@thomasbaafi.com"
+  );
+}
 
 const MAX_DOWNLOADS = 3;
 const DOWNLOAD_VALID_DAYS = 3;
@@ -25,20 +31,25 @@ let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
 
-  const password = process.env.GMAIL_APP_PASSWORD;
-  if (!password || password.includes("your_gmail")) {
+  const host = process.env.EMAIL_HOST;
+  const port = Number(process.env.EMAIL_PORT || 465);
+  const user = getFromEmail();
+  const pass = process.env.EMAIL_PASSWORD;
+
+  if (!host || !pass || pass.includes("your_webmail")) {
     console.warn(
-      "[email] GMAIL_APP_PASSWORD not configured. Skipping thank-you email.",
+      "[email] EMAIL_HOST / EMAIL_PASSWORD not configured. Skipping thank-you email.",
     );
     return null;
   }
 
+  const useSsl = String(process.env.EMAIL_USE_SSL || "True").toLowerCase() === "true";
+
   transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: FROM_EMAIL,
-      pass: password,
-    },
+    host,
+    port,
+    secure: useSsl,
+    auth: { user, pass },
   });
 
   return transporter;
@@ -203,7 +214,7 @@ export async function sendThankYouEmail(
   }
 
   const mailOptions = {
-    from: `"Thomas Baafi" <${FROM_EMAIL}>`,
+    from: `"Thomas Baafi" <${getFromEmail()}>`,
     to: customerEmail,
     subject: "Thank you for purchasing RESILIENCE",
     text: fallbackText,

@@ -516,10 +516,7 @@ function App() {
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
-  const featuredPublicReviews = sortedPublicReviews.filter((r) => r.featured);
-  const otherPublicReviews = sortedPublicReviews.filter((r) => !r.featured);
-  const displayPublicReviews = featuredPublicReviews.concat(otherPublicReviews);
-  const visiblePublicReviews = displayPublicReviews.slice(0, visibleReviewCount);
+  const visiblePublicReviews = sortedPublicReviews.slice(0, visibleReviewCount);
 
   const ratingLabels = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
 
@@ -1558,7 +1555,7 @@ function App() {
                   </div>
                 ))}
               </div>
-            ) : displayPublicReviews.length === 0 ? (
+            ) : sortedPublicReviews.length === 0 ? (
               <div className="reviews-empty">
                 <span className="reviews-empty-star">★</span>
                 <p>
@@ -1612,8 +1609,8 @@ function App() {
             )}
 
             {!reviewsLoading &&
-              displayPublicReviews.length > 0 &&
-              visibleReviewCount < displayPublicReviews.length && (
+              sortedPublicReviews.length > 0 &&
+              visibleReviewCount < sortedPublicReviews.length && (
                 <div style={{ textAlign: "center", marginTop: "20px" }}>
                   <button
                     className="btn btn-secondary"
@@ -1622,7 +1619,7 @@ function App() {
                     }
                   >
                     Load More Reviews (
-                    {displayPublicReviews.length - visibleReviewCount} more)
+                    {sortedPublicReviews.length - visibleReviewCount} more)
                   </button>
                 </div>
               )}
