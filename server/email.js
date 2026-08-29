@@ -2,6 +2,9 @@ import nodemailer from "nodemailer";
 
 const FROM_EMAIL = "bernyx.owusu@gmail.com";
 
+const MAX_DOWNLOADS = 3;
+const DOWNLOAD_VALID_DAYS = 3;
+
 function getApiBase() {
   return (
     process.env.DOWNLOAD_BASE_URL ||
@@ -54,7 +57,7 @@ function buildDownloadSection(products, downloadToken) {
                 <strong style="color:#1f1f1f;">${digitalNames || "Your digital copy"}</strong> is available now.
               </p>
               <p style="font-size:13px;line-height:1.6;color:#a67c52;margin:0 0 20px 0;">
-                This link is valid for 7 days and allows up to 5 downloads. Please save it somewhere safe.
+                This link is valid for ${DOWNLOAD_VALID_DAYS} days and allows up to ${MAX_DOWNLOADS} downloads. Please save it somewhere safe.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0;">
                 <tr>
@@ -165,7 +168,7 @@ export async function sendThankYouEmail(
 
   if (hasDownload) {
     const downloadUrl = `${apiBase}/api/audiobooks/download?token=${encodeURIComponent(downloadToken)}`;
-    fallbackText += `\n\nYour download of ${digitalNames} is ready:\n${downloadUrl}\n\nThis link is valid for 7 days and allows up to 5 downloads.`;
+    fallbackText += `\n\nYour download of ${digitalNames} is ready:\n${downloadUrl}\n\nThis link is valid for ${DOWNLOAD_VALID_DAYS} days and allows up to ${MAX_DOWNLOADS} downloads.`;
   }
 
   const mailOptions = {

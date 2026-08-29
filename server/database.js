@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS entitlements (
   customer_email TEXT,
   download_token TEXT UNIQUE,
   download_count INTEGER DEFAULT 0,
-  max_downloads INTEGER DEFAULT 5,
+  max_downloads INTEGER DEFAULT 3,
   expiration TEXT,
   active BOOLEAN DEFAULT true
 );

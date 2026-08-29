@@ -7,6 +7,9 @@ import { sendThankYouEmail } from './email.js';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
+const MAX_DOWNLOADS = 3;
+const DOWNLOAD_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -149,8 +152,8 @@ app.post('/api/payment/simulate', async (req, res) => {
       customerEmail: order.customer.email,
       downloadToken,
       downloadCount: 0,
-      maxDownloads: 5,
-      expiration: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days valid
+        maxDownloads: MAX_DOWNLOADS,
+        expiration: new Date(Date.now() + DOWNLOAD_EXPIRY_MS).toISOString(), // 3 days valid
       active: true
     });
   }
@@ -213,8 +216,8 @@ app.post('/api/payment/verify', async (req, res) => {
         customerEmail: order.customer.email,
         downloadToken,
         downloadCount: 0,
-        maxDownloads: 5,
-        expiration: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        maxDownloads: MAX_DOWNLOADS,
+        expiration: new Date(Date.now() + DOWNLOAD_EXPIRY_MS).toISOString(),
         active: true
       });
     }
@@ -278,8 +281,8 @@ app.post('/api/payment/verify', async (req, res) => {
         customerEmail: order.customer.email,
         downloadToken,
         downloadCount: 0,
-        maxDownloads: 5,
-        expiration: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        maxDownloads: MAX_DOWNLOADS,
+        expiration: new Date(Date.now() + DOWNLOAD_EXPIRY_MS).toISOString(),
         active: true
       });
     }
@@ -324,7 +327,7 @@ app.get('/api/audiobooks/download', async (req, res) => {
   }
 
   if (entitlement.downloadCount >= entitlement.maxDownloads) {
-    return res.status(429).send('<h1>Error: Download limit reached (Max 5 downloads)</h1>');
+    return res.status(429).send(`<h1>Error: Download limit reached (Max ${MAX_DOWNLOADS} downloads)</h1>`);
   }
 
   // Increment download count
