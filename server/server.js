@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { readDb, writeDb } from './database.js';
 import { sendThankYouEmail } from './email.js';
@@ -9,6 +10,74 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 const MAX_DOWNLOADS = 3;
 const DOWNLOAD_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+const MAX_REVIEW_LENGTH = 1000;
+
+// Generates a unique, unguessable token used to open the post-purchase review page.
+function generateReviewToken() {
+  return 'RVT-' + crypto.randomBytes(24).toString('hex');
+}
+
+// Strips HTML/tags and normalizes text before it is stored.
+function sanitizeText(value, maxLength = MAX_REVIEW_LENGTH) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/[<>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
+// Admin auth: X-Admin-Token header must match ADMIN_TOKEN (server-only env).
+function isAdminAuthorized(req) {
+  if (!process.env.ADMIN_TOKEN) return null; // not configured
+  return req.headers['x-admin-token'] === process.env.ADMIN_TOKEN;
+}
+
+function requireAdmin(req, res) {
+  const authorized = isAdminAuthorized(req);
+  if (authorized === null) {
+    res.status(503).json({ error: 'Admin access is not configured. Set ADMIN_TOKEN in the server environment.' });
+    return false;
+  }
+  if (!authorized) {
+    res.status(401).json({ error: 'Unauthorised admin access.' });
+    return false;
+  }
+  return true;
+}
+
+function getReviewStats(reviews) {
+  const count = status => reviews.filter(r => r.status === status).length;
+  const approved = reviews.filter(r => r.status === 'Approved');
+  const averageRating = approved.length
+    ? Math.round((approved.reduce((sum, r) => sum + r.rating, 0) / approved.length) * 10) / 10
+    : 0;
+  return {
+    total: reviews.length,
+    pending: count('Pending'),
+    approved: count('Approved'),
+    rejected: count('Rejected'),
+    hidden: count('Hidden'),
+    featured: reviews.filter(r => r.featured).length,
+    averageRating
+  };
+}
+
+// Public-safe review payload (never exposes customer email).
+function publicReview(r) {
+  return {
+    id: r.id,
+    productId: r.productId,
+    customerName: r.customerName,
+    rating: r.rating,
+    review: r.review,
+    format: r.format,
+    verified: r.verified,
+    featured: r.featured,
+    createdAt: r.createdAt
+  };
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -141,11 +210,15 @@ app.post('/api/payment/simulate', async (req, res) => {
   // Update order payment status
   order.paymentStatus = status || 'Successful';
   
+  // Generate the review token before persisting so it survives server restarts
+  const paymentSuccessful = status === 'Successful' || !status;
+  if (paymentSuccessful && !order.reviewToken) order.reviewToken = generateReviewToken();
+
   // If payment succeeded and there is a digital product, create Entitlement
   const isDigital = order.products.some(p => p.format === 'Audiobook' || p.format === 'Soft Copy');
   let downloadToken = null;
 
-  if ((status === 'Successful' || !status) && isDigital) {
+  if (paymentSuccessful && isDigital) {
     downloadToken = 'TOK-' + Math.random().toString(36).substr(2, 16);
     db.entitlements.push({
       orderId,
@@ -160,10 +233,11 @@ app.post('/api/payment/simulate', async (req, res) => {
 
   await writeDb(db);
 
-  if ((status === 'Successful' || !status)) {
+  if (paymentSuccessful) {
     await sendThankYouEmail(order.customer.email, order.customer.name, {
       products: order.products,
-      downloadToken
+      downloadToken,
+      reviewToken: order.reviewToken
     });
   }
 
@@ -171,7 +245,8 @@ app.post('/api/payment/simulate', async (req, res) => {
     paymentId,
     transactionReference: transactionRef,
     status: order.paymentStatus,
-    downloadToken
+    downloadToken,
+    reviewToken: order.reviewToken || null
   });
 });
 
@@ -207,6 +282,8 @@ app.post('/api/payment/verify', async (req, res) => {
     db.payments.push(newPayment);
     order.paymentStatus = 'Successful';
 
+    if (!order.reviewToken) order.reviewToken = generateReviewToken();
+
     const isDigital = order.products.some(p => p.format === 'Audiobook' || p.format === 'Soft Copy');
     let downloadToken = null;
     if (isDigital) {
@@ -225,13 +302,15 @@ app.post('/api/payment/verify', async (req, res) => {
     await writeDb(db);
     await sendThankYouEmail(order.customer.email, order.customer.name, {
       products: order.products,
-      downloadToken
+      downloadToken,
+      reviewToken: order.reviewToken
     });
     return res.json({
       paymentId,
       transactionReference: reference,
       status: 'Successful',
-      downloadToken
+      downloadToken,
+      reviewToken: order.reviewToken
     });
   }
 
@@ -272,6 +351,8 @@ app.post('/api/payment/verify', async (req, res) => {
     db.payments.push(newPayment);
     order.paymentStatus = 'Successful';
 
+    if (!order.reviewToken) order.reviewToken = generateReviewToken();
+
     const isDigital = order.products.some(p => p.format === 'Audiobook' || p.format === 'Soft Copy');
     let downloadToken = null;
     if (isDigital) {
@@ -290,13 +371,15 @@ app.post('/api/payment/verify', async (req, res) => {
     await writeDb(db);
     await sendThankYouEmail(order.customer.email, order.customer.name, {
       products: order.products,
-      downloadToken
+      downloadToken,
+      reviewToken: order.reviewToken
     });
     return res.json({
       paymentId,
       transactionReference: reference,
       status: 'Successful',
-      downloadToken
+      downloadToken,
+      reviewToken: order.reviewToken
     });
 
   } catch (error) {
@@ -344,6 +427,200 @@ app.get('/api/audiobooks/download', async (req, res) => {
   }
 
   return res.redirect(secureUrl);
+});
+
+// ===== Customer: validate a post-purchase review token =====
+app.get('/api/reviews/verify', async (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).json({ error: 'Review token is required.' });
+  }
+
+  const db = await readDb();
+  const order = db.orders.find(o => o.reviewToken === token);
+
+  if (!order) {
+    return res.status(404).json({ error: 'This review link is invalid.' });
+  }
+  if (order.paymentStatus !== 'Successful') {
+    return res.status(403).json({ error: 'This purchase was not completed successfully, so it cannot be reviewed.' });
+  }
+  if (db.reviews.some(r => r.orderId === order.id)) {
+    return res.status(409).json({ error: 'A review for this purchase has already been submitted.' });
+  }
+
+  const product = order.products && order.products[0];
+  res.json({
+    valid: true,
+    order: {
+      orderId: order.id,
+      name: order.customer.name,
+      email: order.customer.email,
+      product: product ? product.name : 'RESILIENCE',
+      format: product ? product.format : 'Hard Copy'
+    }
+  });
+});
+
+// ===== Customer: submit a review =====
+app.post('/api/reviews', async (req, res) => {
+  const { token, rating, review, name } = req.body || {};
+  if (!token) {
+    return res.status(400).json({ error: 'Review token is required.' });
+  }
+
+  const stars = Number(rating);
+  if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
+    return res.status(400).json({ error: 'Please select a rating between 1 and 5 stars.' });
+  }
+
+  const reviewText = sanitizeText(review, MAX_REVIEW_LENGTH);
+  if (!reviewText) {
+    return res.status(400).json({ error: 'Please write a short review.' });
+  }
+
+  const db = await readDb();
+  const order = db.orders.find(o => o.reviewToken === token);
+  if (!order) {
+    return res.status(404).json({ error: 'This review link is invalid.' });
+  }
+  if (order.paymentStatus !== 'Successful') {
+    return res.status(403).json({ error: 'This purchase was not completed successfully.' });
+  }
+  if (db.reviews.some(r => r.orderId === order.id)) {
+    return res.status(409).json({ error: 'A review for this purchase has already been submitted.' });
+  }
+
+  const product = order.products && order.products[0];
+  const now = new Date().toISOString();
+  const customerName = sanitizeText(name, 120) || order.customer.name;
+
+  const newReview = {
+    id: 'REV-' + Math.floor(100000 + Math.random() * 900000),
+    productId: product ? product.id : 'prod-resilience-hardcover',
+    orderId: order.id,
+    customerId: order.id,
+    customerName,
+    customerEmail: order.customer.email,
+    rating: stars,
+    review: reviewText,
+    format: product ? product.format : 'Hard Copy',
+    verified: true,
+    status: 'Pending',
+    featured: false,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  db.reviews.push(newReview);
+  await writeDb(db);
+
+  res.status(201).json({
+    status: 'Pending',
+    message: 'Your review has been submitted successfully and is awaiting approval.'
+  });
+});
+
+// ===== Public: approved reviews =====
+app.get('/api/reviews', async (req, res) => {
+  const { sort } = req.query;
+  const db = await readDb();
+  let reviews = db.reviews
+    .filter(r => r.status === 'Approved')
+    .map(publicReview);
+
+  if (sort === 'highest') {
+    reviews.sort((a, b) => b.rating - a.rating);
+  } else if (sort === 'lowest') {
+    reviews.sort((a, b) => a.rating - b.rating);
+  } else {
+    reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  res.json({ reviews, count: reviews.length });
+});
+
+// ===== Public: review rating summary =====
+app.get('/api/reviews/summary', async (req, res) => {
+  const db = await readDb();
+  const approved = db.reviews.filter(r => r.status === 'Approved');
+  const ratings = approved.map(r => r.rating);
+  const breakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  ratings.forEach(r => { breakdown[r] += 1; });
+
+  res.json({
+    total: approved.length,
+    averageRating: ratings.length
+      ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
+      : 0,
+    breakdown
+  });
+});
+
+// ===== Admin: list all reviews (authenticated) =====
+app.get('/api/admin/reviews', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+
+  const db = await readDb();
+  const reviews = db.reviews
+    .map(r => {
+      const order = db.orders.find(o => o.id === r.orderId);
+      return {
+        ...r,
+        paymentStatus: order ? order.paymentStatus : null
+      };
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  res.json({ reviews, summary: getReviewStats(db.reviews) });
+});
+
+// ===== Admin: update review status / featured flag =====
+app.patch('/api/admin/reviews/:id', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+
+  const db = await readDb();
+  const review = db.reviews.find(r => r.id === req.params.id);
+  if (!review) {
+    return res.status(404).json({ error: 'Review not found.' });
+  }
+
+  const { status, featured } = req.body || {};
+  const allowed = ['Pending', 'Approved', 'Rejected', 'Hidden'];
+
+  if (status !== undefined) {
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ error: 'Invalid review status.' });
+    }
+    review.status = status;
+    if (status !== 'Approved') review.featured = false;
+  }
+
+  if (featured !== undefined) {
+    if (featured && review.status !== 'Approved') {
+      return res.status(400).json({ error: 'A review must be approved before it can be featured.' });
+    }
+    review.featured = Boolean(featured);
+  }
+
+  review.updatedAt = new Date().toISOString();
+  await writeDb(db);
+  res.json(review);
+});
+
+// ===== Admin: delete a review =====
+app.delete('/api/admin/reviews/:id', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+
+  const db = await readDb();
+  const index = db.reviews.findIndex(r => r.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Review not found.' });
+  }
+
+  db.reviews.splice(index, 1);
+  await writeDb(db);
+  res.json({ success: true });
 });
 
 // Admin Dashboard stats & metrics endpoint

@@ -12,6 +12,14 @@ function getApiBase() {
   );
 }
 
+// Base URL for customer-facing pages (the review link points here, not the API).
+function getSiteBase() {
+  return (
+    process.env.SITE_BASE_URL ||
+    (process.env.VERCEL ? "" : "http://localhost:5173")
+  );
+}
+
 let transporter = null;
 
 function getTransporter() {
@@ -74,9 +82,33 @@ function buildDownloadSection(products, downloadToken) {
           </tr>`;
 }
 
-function buildThankYouHtml(customerName, products, downloadToken) {
+function buildReviewSection(reviewToken) {
+  const siteBase = getSiteBase();
+  if (!reviewToken || !siteBase) return "";
+
+  const reviewUrl = `${siteBase}/review?token=${encodeURIComponent(reviewToken)}`;
+
+  return `
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0;">
+            <tr>
+              <td style="background-color:#0f0f0f;border-radius:8px;padding:14px 28px;">
+                <a href="${reviewUrl}" style="font-family:'Montserrat',Arial,sans-serif;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">Add a review</a>
+              </td>
+            </tr>
+          </table>
+          <p style="font-size:13px;line-height:1.6;color:#a67c52;margin:14px 0 0 0;">
+            We'd love to hear what you thought about RESILIENCE. Your review will help other readers decide.
+          </p>
+          <p style="font-size:12px;color:#a9a9a9;margin:10px 0 0 0;">
+            Button not working? Copy and paste this link into your browser:<br>
+            <a href="${reviewUrl}" style="color:#a67c52;word-break:break-all;">${reviewUrl}</a>
+          </p>`;
+}
+
+function buildThankYouHtml(customerName, products, downloadToken, reviewToken) {
   const displayName = customerName || "there";
   const downloadSection = buildDownloadSection(products, downloadToken);
+  const reviewSection = buildReviewSection(reviewToken);
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -108,13 +140,7 @@ function buildThankYouHtml(customerName, products, downloadToken) {
                 Enjoy the read — may these pages encourage and strengthen you on your journey.
               </p>
              
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0;">
-                <tr>
-                  <td style="background-color:#0f0f0f;border-radius:8px;padding:14px 28px;">
-                    <a href="https://thomasbaafi.com" style="font-family:'Montserrat',Arial,sans-serif;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">Keep in touch</a>
-                  </td>
-                </tr>
-              </table>
+              ${reviewSection}
 
                ${downloadSection}
             </td>
@@ -144,7 +170,7 @@ function buildThankYouHtml(customerName, products, downloadToken) {
 export async function sendThankYouEmail(
   customerEmail,
   customerName,
-  { products, downloadToken } = {},
+  { products, downloadToken, reviewToken } = {},
 ) {
   const mailer = getTransporter();
   if (!mailer) return { skipped: true, reason: "not_configured" };
@@ -171,12 +197,17 @@ export async function sendThankYouEmail(
     fallbackText += `\n\nYour download of ${digitalNames} is ready:\n${downloadUrl}\n\nThis link is valid for ${DOWNLOAD_VALID_DAYS} days and allows up to ${MAX_DOWNLOADS} downloads.`;
   }
 
+  if (reviewToken && getSiteBase()) {
+    const reviewUrl = `${getSiteBase()}/review?token=${encodeURIComponent(reviewToken)}`;
+    fallbackText += `\n\nWe'd love to hear what you thought about RESILIENCE. Add a review here:\n${reviewUrl}`;
+  }
+
   const mailOptions = {
     from: `"Thomas Baafi" <${FROM_EMAIL}>`,
     to: customerEmail,
     subject: "Thank you for purchasing RESILIENCE",
     text: fallbackText,
-    html: buildThankYouHtml(customerName, products, downloadToken),
+    html: buildThankYouHtml(customerName, products, downloadToken, reviewToken),
   };
 
   try {

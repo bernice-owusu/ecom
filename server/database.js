@@ -48,7 +48,8 @@ const initialData = {
   orders: [],
   payments: [],
   deliveries: [],
-  entitlements: []
+  entitlements: [],
+  reviews: []
 };
 
 const SCHEMA = `
@@ -72,7 +73,8 @@ CREATE TABLE IF NOT EXISTS orders (
   total NUMERIC,
   payment_status TEXT,
   order_status TEXT,
-  date TEXT
+  date TEXT,
+  review_token TEXT UNIQUE
 );
 CREATE TABLE IF NOT EXISTS payments (
   id TEXT PRIMARY KEY,
@@ -103,6 +105,23 @@ CREATE TABLE IF NOT EXISTS entitlements (
   expiration TEXT,
   active BOOLEAN DEFAULT true
 );
+CREATE TABLE IF NOT EXISTS reviews (
+  id TEXT PRIMARY KEY,
+  product_id TEXT,
+  order_id TEXT,
+  customer_id TEXT,
+  customer_name TEXT,
+  customer_email TEXT,
+  rating INTEGER,
+  review_text TEXT,
+  format TEXT,
+  verified BOOLEAN DEFAULT true,
+  status TEXT DEFAULT 'Pending',
+  featured BOOLEAN DEFAULT false,
+  created_at TEXT,
+  updated_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS reviews_order_id_key ON reviews (order_id);
 `;
 
 let pool = null;
@@ -123,6 +142,7 @@ function getPool() {
 
 async function ensureSchema() {
   await getPool().query(SCHEMA);
+  await getPool().query('ALTER TABLE orders ADD COLUMN IF NOT EXISTS review_token TEXT');
   const { rows } = await getPool().query('SELECT COUNT(*)::int AS c FROM products');
   if (rows[0].c === 0) {
     for (const p of initialData.products) {
@@ -138,12 +158,13 @@ async function ensureSchema() {
 
 async function loadFromDb() {
   const c = getPool();
-  const [prods, orders, payments, deliveries, ent] = await Promise.all([
+  const [prods, orders, payments, deliveries, ent, revs] = await Promise.all([
     c.query('SELECT * FROM products ORDER BY id'),
     c.query('SELECT * FROM orders'),
     c.query('SELECT * FROM payments'),
     c.query('SELECT * FROM deliveries'),
-    c.query('SELECT * FROM entitlements')
+    c.query('SELECT * FROM entitlements'),
+    c.query('SELECT * FROM reviews ORDER BY created_at')
   ]);
 
   const products = prods.rows.map(r => ({
@@ -167,7 +188,8 @@ async function loadFromDb() {
     total: Number(r.total),
     paymentStatus: r.payment_status,
     orderStatus: r.order_status,
-    date: r.date
+    date: r.date,
+    reviewToken: r.review_token || null
   }));
 
   const paymentsList = payments.rows.map(r => ({
@@ -202,7 +224,24 @@ async function loadFromDb() {
     active: r.active
   }));
 
-  return { products, orders: ordersList, payments: paymentsList, deliveries: deliveriesList, entitlements: entitlementsList };
+  const reviewsList = revs.rows.map(r => ({
+    id: r.id,
+    productId: r.product_id,
+    orderId: r.order_id,
+    customerId: r.customer_id,
+    customerName: r.customer_name,
+    customerEmail: r.customer_email,
+    rating: r.rating,
+    review: r.review_text,
+    format: r.format,
+    verified: r.verified,
+    status: r.status,
+    featured: r.featured,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at
+  }));
+
+  return { products, orders: ordersList, payments: paymentsList, deliveries: deliveriesList, entitlements: entitlementsList, reviews: reviewsList };
 }
 
 async function persistDb(data) {
@@ -225,13 +264,13 @@ async function persistDb(data) {
 
     for (const o of data.orders) {
       await client.query(
-        `INSERT INTO orders (id, customer, products, subtotal, delivery_fee, total, payment_status, order_status, date)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        `INSERT INTO orders (id, customer, products, subtotal, delivery_fee, total, payment_status, order_status, date, review_token)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
          ON CONFLICT (id) DO UPDATE SET
            customer=EXCLUDED.customer, products=EXCLUDED.products, subtotal=EXCLUDED.subtotal,
            delivery_fee=EXCLUDED.delivery_fee, total=EXCLUDED.total, payment_status=EXCLUDED.payment_status,
-           order_status=EXCLUDED.order_status, date=EXCLUDED.date`,
-        [o.id, JSON.stringify(o.customer), JSON.stringify(o.products), o.subtotal, o.deliveryFee, o.total, o.paymentStatus, o.orderStatus, o.date]
+           order_status=EXCLUDED.order_status, date=EXCLUDED.date, review_token=EXCLUDED.review_token`,
+        [o.id, JSON.stringify(o.customer), JSON.stringify(o.products), o.subtotal, o.deliveryFee, o.total, o.paymentStatus, o.orderStatus, o.date, o.reviewToken || null]
       );
     }
 
@@ -269,6 +308,24 @@ async function persistDb(data) {
       );
     }
 
+    for (const r of data.reviews) {
+      await client.query(
+        `INSERT INTO reviews (id, product_id, order_id, customer_id, customer_name, customer_email, rating, review_text, format, verified, status, featured, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         ON CONFLICT (id) DO UPDATE SET
+           product_id=EXCLUDED.product_id, order_id=EXCLUDED.order_id, customer_id=EXCLUDED.customer_id,
+           customer_name=EXCLUDED.customer_name, customer_email=EXCLUDED.customer_email,
+           rating=EXCLUDED.rating, review_text=EXCLUDED.review_text, format=EXCLUDED.format,
+           verified=EXCLUDED.verified, status=EXCLUDED.status, featured=EXCLUDED.featured,
+           created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`,
+        [r.id, r.productId, r.orderId, r.customerId, r.customerName, r.customerEmail, r.rating, r.review, r.format, r.verified, r.status, r.featured, r.createdAt, r.updatedAt]
+      );
+    }
+
+    // Remove review records no longer present (e.g. deleted by an admin)
+    const reviewIds = (data.reviews || []).map(r => r.id);
+    await client.query('DELETE FROM reviews WHERE NOT (id = ANY($1::text[]))', [reviewIds]);
+
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -291,7 +348,7 @@ export async function readDb() {
   try {
     const data = fs.readFileSync(DB_FILE, 'utf8');
     memoryDb = JSON.parse(data);
-  } catch (err) {
+  } catch {
     memoryDb = JSON.parse(JSON.stringify(initialData));
   }
   return memoryDb;
@@ -306,7 +363,7 @@ export async function writeDb(data) {
   }
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-  } catch (err) {
+  } catch {
     console.warn('Database file update skipped (read-only filesystem on Vercel)');
   }
 }
