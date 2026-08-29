@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Fragment } from "react";
 import "./index.css";
 
 // Config API domain (adjust if server is running elsewhere)
@@ -75,6 +75,7 @@ function App() {
   const [adminSummary, setAdminSummary] = useState(null);
   const [adminFilter, setAdminFilter] = useState("All");
   const [adminSelectedReview, setAdminSelectedReview] = useState(null);
+  const [expandedCustomer, setExpandedCustomer] = useState(null);
 
   // Fetch Products
   useEffect(() => {
@@ -471,11 +472,12 @@ function App() {
       customerIndex[email] = {
         name: o.customer?.name || "Unknown",
         email,
-        orders: 0,
+        phone: o.customer?.phone || "",
+        orders: [],
         spent: 0,
       };
     }
-    customerIndex[email].orders += 1;
+    customerIndex[email].orders.push(o);
     customerIndex[email].spent += Number(o.total) || 0;
   });
   const adminCustomers = Object.values(customerIndex).sort(
@@ -2210,20 +2212,119 @@ function App() {
                         <table className="admin-table">
                           <thead>
                             <tr>
-                              <th>Name</th>
+                              <th>Customer</th>
                               <th>Email</th>
                               <th>Orders</th>
                               <th>Total Spent</th>
+                              <th></th>
                             </tr>
                           </thead>
                           <tbody>
                             {adminCustomers.map((c) => (
-                              <tr key={c.email}>
-                                <td>{c.name}</td>
-                                <td>{c.email}</td>
-                                <td>{c.orders}</td>
-                                <td>GHS {c.spent.toFixed(2)}</td>
-                              </tr>
+                              <Fragment key={c.email}>
+                                <tr
+                                  className="clickable"
+                                  onClick={() =>
+                                    setExpandedCustomer(
+                                      expandedCustomer === c.email
+                                        ? null
+                                        : c.email
+                                    )
+                                  }
+                                >
+                                  <td>
+                                    {c.name}
+                                    {c.phone ? (
+                                      <span className="admin-customer-phone">
+                                        {c.phone}
+                                      </span>
+                                    ) : null}
+                                  </td>
+                                  <td>{c.email}</td>
+                                  <td>{c.orders.length}</td>
+                                  <td>GHS {c.spent.toFixed(2)}</td>
+                                  <td className="admin-customer-caret">
+                                    {expandedCustomer === c.email ? "▲" : "▼"}
+                                  </td>
+                                </tr>
+                                {expandedCustomer === c.email && (
+                                  <tr>
+                                    <td
+                                      colSpan="5"
+                                      style={{ padding: "0 12px" }}
+                                    >
+                                      <div className="admin-customer-detail">
+                                        {c.orders.map((o) => {
+                                          const delivery =
+                                            adminDeliveries.find(
+                                              (d) => d.orderId === o.id
+                                            );
+                                          return (
+                                            <div
+                                              key={o.id}
+                                              className="admin-customer-order"
+                                            >
+                                              <div className="admin-customer-order-head">
+                                                <strong>{o.id}</strong>
+                                                <span className="status-badge neutral">
+                                                  {o.orderStatus}
+                                                </span>
+                                                <span className="status-badge successful">
+                                                  {o.paymentStatus}
+                                                </span>
+                                                <span>
+                                                  GHS {o.total.toFixed(2)}
+                                                </span>
+                                                <span>
+                                                  {new Date(o.date).toLocaleDateString()}
+                                                </span>
+                                              </div>
+                                              <div className="admin-customer-order-prods">
+                                                {o.products.map((p) => (
+                                                  <span
+                                                    key={p.id}
+                                                    className="admin-customer-prod"
+                                                  >
+                                                    {p.name} · {p.format} ×{" "}
+                                                    {p.quantity} — GHS{" "}
+                                                    {(
+                                                      Number(p.price) *
+                                                      p.quantity
+                                                    ).toFixed(2)}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                              {delivery && (
+                                                <div className="admin-customer-delivery">
+                                                  <span className="admin-customer-delivery-title">
+                                                    Delivery Address
+                                                  </span>
+                                                  <p>
+                                                    {delivery.address
+                                                      ? `${delivery.address}, `
+                                                      : ""}
+                                                    {delivery.city},{" "}
+                                                    {delivery.region}{" "}
+                                                    {delivery.postalCode},{" "}
+                                                    {delivery.country}
+                                                    {delivery.additionalInfo
+                                                      ? ` · ${delivery.additionalInfo}`
+                                                      : ""}
+                                                  </p>
+                                                  <p>
+                                                    Delivery status:{" "}
+                                                    {delivery.status}
+                                                  </p>
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
                             ))}
                           </tbody>
                         </table>
