@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
 import { readDb, writeDb } from './database.js';
+import { sendThankYouEmail } from './email.js';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
@@ -16,13 +17,13 @@ app.use(express.json());
 app.use('/public', express.static(path.join(process.cwd(), 'public')));
 
 // Products API
-app.get('/api/products', (req, res) => {
-  const db = readDb();
+app.get('/api/products', async (req, res) => {
+  const db = await readDb();
   res.json(db.products);
 });
 
-app.put('/api/products/:id', (req, res) => {
-  const db = readDb();
+app.put('/api/products/:id', async (req, res) => {
+  const db = await readDb();
   const { id } = req.params;
   const { price, active, description } = req.body;
   
@@ -33,18 +34,18 @@ app.put('/api/products/:id', (req, res) => {
   if (active !== undefined) product.active = Boolean(active);
   if (description !== undefined) product.description = String(description);
   
-  writeDb(db);
+  await writeDb(db);
   res.json(product);
 });
 
 // Checkout API - Initiates Order
-app.post('/api/checkout', (req, res) => {
+app.post('/api/checkout', async (req, res) => {
   const { customer, items, shippingAddress } = req.body;
   if (!customer || !items || !items.length) {
     return res.status(400).json({ error: 'Missing required checkout information.' });
   }
 
-  const db = readDb();
+  const db = await readDb();
   const orderId = 'TB-' + Math.floor(100000 + Math.random() * 900000);
   
   // Calculate pricing based on matching products in db
@@ -103,15 +104,15 @@ app.post('/api/checkout', (req, res) => {
     });
   }
 
-  writeDb(db);
+  await writeDb(db);
   res.json({ orderId, total, isPhysical });
 });
 
 // Simulated Payment Endpoint
-app.post('/api/payment/simulate', (req, res) => {
+app.post('/api/payment/simulate', async (req, res) => {
   const { orderId, method, status } = req.body; // status: 'Successful', 'Failed'
   
-  const db = readDb();
+  const db = await readDb();
   const order = db.orders.find(o => o.id === orderId);
   
   if (!order) {
@@ -154,7 +155,14 @@ app.post('/api/payment/simulate', (req, res) => {
     });
   }
 
-  writeDb(db);
+  await writeDb(db);
+
+  if ((status === 'Successful' || !status)) {
+    await sendThankYouEmail(order.customer.email, order.customer.name, {
+      products: order.products,
+      downloadToken
+    });
+  }
 
   res.json({
     paymentId,
@@ -171,7 +179,7 @@ app.post('/api/payment/verify', async (req, res) => {
     return res.status(400).json({ error: 'Missing payment reference or order ID.' });
   }
 
-  const db = readDb();
+  const db = await readDb();
   const order = db.orders.find(o => o.id === orderId);
   if (!order) {
     return res.status(404).json({ error: 'Order not found.' });
@@ -211,7 +219,11 @@ app.post('/api/payment/verify', async (req, res) => {
       });
     }
 
-    writeDb(db);
+    await writeDb(db);
+    await sendThankYouEmail(order.customer.email, order.customer.name, {
+      products: order.products,
+      downloadToken
+    });
     return res.json({
       paymentId,
       transactionReference: reference,
@@ -272,7 +284,11 @@ app.post('/api/payment/verify', async (req, res) => {
       });
     }
 
-    writeDb(db);
+    await writeDb(db);
+    await sendThankYouEmail(order.customer.email, order.customer.name, {
+      products: order.products,
+      downloadToken
+    });
     return res.json({
       paymentId,
       transactionReference: reference,
@@ -288,13 +304,13 @@ app.post('/api/payment/verify', async (req, res) => {
 
 
 // Secure Digital Download Endpoint
-app.get('/api/audiobooks/download', (req, res) => {
+app.get('/api/audiobooks/download', async (req, res) => {
   const { token } = req.query;
   if (!token) {
     return res.status(400).send('<h1>Error: Download token is required</h1>');
   }
 
-  const db = readDb();
+  const db = await readDb();
   const entitlement = db.entitlements.find(e => e.downloadToken === token);
 
   if (!entitlement || !entitlement.active) {
@@ -303,7 +319,7 @@ app.get('/api/audiobooks/download', (req, res) => {
 
   if (new Date(entitlement.expiration) < new Date()) {
     entitlement.active = false;
-    writeDb(db);
+    await writeDb(db);
     return res.status(410).send('<h1>Error: This download link has expired</h1>');
   }
 
@@ -313,7 +329,7 @@ app.get('/api/audiobooks/download', (req, res) => {
 
   // Increment download count
   entitlement.downloadCount += 1;
-  writeDb(db);
+  await writeDb(db);
 
   // Redirect to the storage URL configured in env
   const order = db.orders.find(o => o.id === entitlement.orderId);
@@ -328,8 +344,8 @@ app.get('/api/audiobooks/download', (req, res) => {
 });
 
 // Admin Dashboard stats & metrics endpoint
-app.get('/api/admin/metrics', (req, res) => {
-  const db = readDb();
+app.get('/api/admin/metrics', async (req, res) => {
+  const db = await readDb();
   
   const paidOrders = db.orders.filter(o => o.paymentStatus === 'Successful');
   const pendingPayments = db.orders.filter(o => o.paymentStatus === 'Pending');
@@ -351,11 +367,11 @@ app.get('/api/admin/metrics', (req, res) => {
 });
 
 // Admin Order Status Update
-app.post('/api/admin/orders/:id/status', (req, res) => {
+app.post('/api/admin/orders/:id/status', async (req, res) => {
   const { id } = req.params;
   const { status } = req.body; // e.g. 'Processing', 'Shipped', 'Delivered'
   
-  const db = readDb();
+  const db = await readDb();
   const order = db.orders.find(o => o.id === id);
   if (!order) return res.status(404).json({ error: 'Order not found' });
   
@@ -367,7 +383,7 @@ app.post('/api/admin/orders/:id/status', (req, res) => {
     delivery.status = status;
   }
 
-  writeDb(db);
+  await writeDb(db);
   res.json(order);
 });
 
