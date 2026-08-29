@@ -625,6 +625,8 @@ app.delete('/api/admin/reviews/:id', async (req, res) => {
 
 // Admin Dashboard stats & metrics endpoint
 app.get('/api/admin/metrics', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+
   const db = await readDb();
   
   const paidOrders = db.orders.filter(o => o.paymentStatus === 'Successful');
@@ -642,12 +644,17 @@ app.get('/api/admin/metrics', async (req, res) => {
     revenue,
     downloads,
     orders: db.orders,
-    deliveries: db.deliveries
+    products: db.products,
+    payments: db.payments,
+    deliveries: db.deliveries,
+    entitlements: db.entitlements
   });
 });
 
 // Admin Order Status Update
 app.post('/api/admin/orders/:id/status', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+
   const { id } = req.params;
   const { status } = req.body; // e.g. 'Processing', 'Shipped', 'Delivered'
   

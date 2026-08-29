@@ -54,11 +54,15 @@ function App() {
   const [reviewText, setReviewText] = useState("");
   const [reviewerName, setReviewerName] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewCoverLoaded, setReviewCoverLoaded] = useState(false);
+  const [reviewCoverError, setReviewCoverError] = useState(false);
 
   // Public reviews page
   const [publicReviews, setPublicReviews] = useState([]);
   const [reviewSummary, setReviewSummary] = useState(null);
   const [reviewSort, setReviewSort] = useState("recent");
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [visibleReviewCount, setVisibleReviewCount] = useState(4);
 
   // Admin dashboard
   const [adminPage, setAdminPage] = useState("reviews"); // dashboard, reviews, others
@@ -119,18 +123,37 @@ function App() {
   }, [currentPage, reviewToken, reviewStatus]);
 
   // Load public reviews + summary when the reviews page (or teaser) is shown
-  useEffect(() => {
-    if (currentPage !== "store" && currentPage !== "reviews") return;
-    fetch(`${API_URL}/reviews/summary`)
+  const loadPublicReviews = (page) => {
+    if (page !== "store" && page !== "reviews") return;
+    setReviewsLoading(true);
+    const loadSummary = fetch(`${API_URL}/reviews/summary`)
       .then((r) => r.json())
       .then(setReviewSummary)
       .catch((err) => console.error("Error fetching review summary:", err));
-    if (currentPage === "reviews") {
+    if (page === "reviews") {
       fetch(`${API_URL}/reviews`)
         .then((r) => r.json())
-        .then((d) => setPublicReviews(d.reviews || []))
-        .catch((err) => console.error("Error fetching reviews:", err));
+        .then((d) => {
+          setPublicReviews(d.reviews || []);
+          setVisibleReviewCount(4);
+        })
+        .catch((err) => console.error("Error fetching reviews:", err))
+        .finally(() => setReviewsLoading(false));
+    } else {
+      loadSummary.finally(() => setReviewsLoading(false));
     }
+  };
+
+  useEffect(() => {
+    loadPublicReviews(currentPage);
+  }, [currentPage]);
+
+  // Refresh public reviews whenever the tab regains focus (e.g. after approving
+  // in another tab) so newly approved reviews appear without a manual reload.
+  useEffect(() => {
+    const onFocus = () => loadPublicReviews(currentPage);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [currentPage]);
 
   // Load admin data once authenticated
@@ -146,7 +169,9 @@ function App() {
         setAdminSummary(data.summary);
       })
       .catch((err) => console.error("Error fetching admin reviews:", err));
-    fetch(`${API_URL}/admin/metrics`)
+    fetch(`${API_URL}/admin/metrics`, {
+      headers: { "X-Admin-Token": adminAuthed },
+    })
       .then((r) => r.json())
       .then(setAdminMetrics)
       .catch((err) => console.error("Error fetching admin metrics:", err));
@@ -425,6 +450,8 @@ function App() {
     setReviewRating(0);
     setReviewText("");
     setReviewerName("");
+    setReviewCoverLoaded(false);
+    setReviewCoverError(false);
   };
 
   const filteredAdminReviews = adminReviews.filter((r) => {
@@ -432,6 +459,54 @@ function App() {
     if (adminFilter === "Featured") return r.featured;
     return r.status === adminFilter;
   });
+
+  // Derived admin data (orders, customers)
+  const adminOrders = adminMetrics?.orders || [];
+  const adminDeliveries = adminMetrics?.deliveries || [];
+
+  const customerIndex = {};
+  adminOrders.forEach((o) => {
+    const email = o.customer?.email || "unknown";
+    if (!customerIndex[email]) {
+      customerIndex[email] = {
+        name: o.customer?.name || "Unknown",
+        email,
+        orders: 0,
+        spent: 0,
+      };
+    }
+    customerIndex[email].orders += 1;
+    customerIndex[email].spent += Number(o.total) || 0;
+  });
+  const adminCustomers = Object.values(customerIndex).sort(
+    (a, b) => b.spent - a.spent,
+  );
+
+  const handleUpdateOrderStatus = (orderId, newStatus) => {
+    fetch(`${API_URL}/admin/orders/${orderId}/status`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Token": adminAuthed,
+      },
+      body: JSON.stringify({ status: newStatus }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Could not update order status");
+        const updated = await res.json();
+        setAdminMetrics((m) =>
+          m
+            ? {
+                ...m,
+                orders: m.orders.map((o) =>
+                  o.id === updated.id ? updated : o,
+                ),
+              }
+            : m,
+        );
+      })
+      .catch((err) => alert(err.message));
+  };
 
   const sortedPublicReviews = publicReviews.slice().sort((a, b) => {
     if (reviewSort === "highest") return b.rating - a.rating;
@@ -442,15 +517,15 @@ function App() {
   const featuredPublicReviews = sortedPublicReviews.filter((r) => r.featured);
   const otherPublicReviews = sortedPublicReviews.filter((r) => !r.featured);
   const displayPublicReviews = featuredPublicReviews.concat(otherPublicReviews);
+  const visiblePublicReviews = displayPublicReviews.slice(0, visibleReviewCount);
+
+  const ratingLabels = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
 
   const adminNavItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "orders", label: "Orders" },
     { id: "reviews", label: "Reviews", badge: adminSummary?.pending },
-    { id: "products", label: "Products" },
     { id: "customers", label: "Customers" },
-    { id: "payments", label: "Payments" },
-    { id: "settings", label: "Settings" },
   ];
 
   return (
@@ -1185,258 +1260,199 @@ function App() {
 
         {/* SCREEN 4: Post-purchase review form */}
         {currentPage === "review" && (
-          <div
-            style={{
-              maxWidth: "620px",
-              margin: "0 auto",
-              padding: "20px 0",
-              textAlign: "left",
-            }}
-          >
+          <div className="review-form-wrap">
             {reviewStatus === "loading" && (
-              <div style={{ textAlign: "center", padding: "60px 0" }}>
-                <span
-                  className="ion-load-c"
-                  style={{
-                    fontSize: "48px",
-                    display: "block",
-                    animation: "spin 1.5s infinite linear",
-                    marginBottom: "20px",
-                  }}
-                ></span>
-                <h3>Verifying your purchase...</h3>
-                <style>{`
-                  @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                  }
-                `}</style>
+              <div className="review-state review-state-center">
+                <div className="review-form-card review-loading-card">
+                  <div className="review-hero">
+                    <div className="review-hero-cover">
+                      <div className="review-cover-loader" />
+                    </div>
+                    <div className="review-skeleton review-skeleton-line" />
+                  </div>
+                  <div className="review-form-body">
+                    <div className="review-spinner" />
+                    <p style={{ color: "var(--color-medium)" }}>
+                      Confirming your purchase…
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
             {reviewStatus === "error" && (
-              <div style={{ textAlign: "center", padding: "40px 0" }}>
+              <div className="review-state review-state-center">
+                <img
+                  src="/img/resilience_cover.png"
+                  alt="RESILIENCE book cover"
+                  className="review-state-cover"
+                />
+                <div className="review-state-icon error">!</div>
                 <h1>Review Unavailable</h1>
                 <p>{reviewError}</p>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setCurrentPage("store");
-                    resetFormState();
-                  }}
-                >
-                  Back to Book Page
-                </button>
+                <div className="review-state-actions">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setCurrentPage("store");
+                      resetFormState();
+                    }}
+                  >
+                    Back to Book Page
+                  </button>
+                </div>
               </div>
             )}
 
             {reviewStatus === "used" && (
-              <div style={{ textAlign: "center", padding: "40px 0" }}>
-                <span
-                  className="ion-ios-checkmark-outline"
-                  style={{ fontSize: "72px", color: "var(--color-success)" }}
-                ></span>
+              <div className="review-state review-state-center">
+                <img
+                  src="/img/resilience_cover.png"
+                  alt="RESILIENCE book cover"
+                  className="review-state-cover"
+                />
+                <div className="review-state-icon success">
+                  <span className="ion-ios-checkmark-outline"></span>
+                </div>
                 <h1>Already Submitted</h1>
                 <p>
                   Thank you! A review for this purchase has already been
                   submitted. It will appear once approved.
                 </p>
-                <button
-                  className="btn"
-                  style={{ marginRight: "10px" }}
-                  onClick={() => setCurrentPage("reviews")}
-                >
-                  Read Reader Reviews
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setCurrentPage("store")}
-                >
-                  Back to Book Page
-                </button>
+                <div className="review-state-actions">
+                  <button
+                    className="btn"
+                    onClick={() => setCurrentPage("reviews")}
+                  >
+                    Read Reader Reviews
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setCurrentPage("store")}
+                  >
+                    Back to Book Page
+                  </button>
+                </div>
               </div>
             )}
 
             {reviewStatus === "ready" && (
-              <form onSubmit={handleSubmitReview}>
-                <h1>Share Your Experience</h1>
-                <h2>We'd love to hear what you thought about RESILIENCE.</h2>
-
-                <div
-                  style={{
-                    background: "#fafafa",
-                    border: "1px solid #eee",
-                    padding: "16px 20px",
-                    marginBottom: "30px",
-                    fontSize: "14px",
-                    color: "var(--color-medium)",
-                  }}
-                >
-                  <strong style={{ color: "var(--color-dark)" }}>
-                    RESILIENCE
-                  </strong>{" "}
-                  — {reviewContext?.format}
-                  <br />
-                  Order {reviewContext?.orderId}
-                </div>
-
-                <div style={{ marginBottom: "28px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Your Rating *
-                  </label>
-                  <div className="rating-stars">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        className={`star${n <= reviewRating ? " active" : ""}`}
-                        onClick={() => setReviewRating(n)}
-                        aria-label={`Rate ${n} star${n > 1 ? "s" : ""}`}
-                      >
-                        ★
-                      </button>
-                    ))}
+              <form className="review-form-card" onSubmit={handleSubmitReview}>
+                <div className="review-hero">
+                  <span className="review-hero-kicker">Reader Reviews</span>
+                  <div className="review-hero-cover">
+                    {reviewCoverError ? (
+                      <div className="review-cover-fallback">RESILIENCE</div>
+                    ) : (
+                      <>
+                        {!reviewCoverLoaded && (
+                          <div className="review-cover-loader" />
+                        )}
+                        <img
+                          src="/img/resilience_cover.png"
+                          alt="RESILIENCE book cover"
+                          onLoad={() => setReviewCoverLoaded(true)}
+                          onError={() => setReviewCoverError(true)}
+                          style={
+                            reviewCoverLoaded
+                              ? undefined
+                              : { visibility: "hidden" }
+                          }
+                        />
+                      </>
+                    )}
                   </div>
-                  {reviewRating > 0 && (
-                    <span
-                      style={{ fontSize: "14px", color: "var(--color-medium)" }}
-                    >
-                      {reviewRating} / 5
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ marginBottom: "28px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Your Review *
-                  </label>
-                  <textarea
-                    value={reviewText}
-                    onChange={(e) => setReviewText(e.target.value)}
-                    maxLength={1000}
-                    placeholder="Tell us what you thought about the book..."
-                    rows={6}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      border: "1px solid #ddd",
-                      fontFamily: "inherit",
-                      fontSize: "15px",
-                      resize: "vertical",
-                    }}
-                  />
-                  <div
-                    style={{
-                      textAlign: "right",
-                      fontSize: "12px",
-                      color: "#aaa",
-                    }}
-                  >
-                    {reviewText.length} / 1000
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: "28px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    value={reviewerName}
-                    onChange={(e) => setReviewerName(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      fontFamily: "inherit",
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: "28px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={reviewContext?.email || ""}
-                    readOnly
-                    disabled
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      fontFamily: "inherit",
-                      background: "#f5f5f5",
-                      color: "#777",
-                    }}
-                  />
-                  <p
-                    style={{
-                      fontSize: "12px",
-                      color: "#aaa",
-                      margin: "4px 0 0",
-                    }}
-                  >
-                    Your email is used only to verify your purchase and is never
-                    shown publicly.
+                  <h1>Share Your Experience</h1>
+                  <p>
+                    We'd love to hear what you thought about{" "}
+                    <em>RESILIENCE</em>.
                   </p>
+                  <div className="review-pill">
+                    {reviewContext?.format || "Hard Copy"} · Order{" "}
+                    {reviewContext?.orderId}
+                  </div>
                 </div>
 
-                <div
-                  style={{
-                    background: "#f7fff7",
-                    border: "1px solid #d4eed4",
-                    padding: "12px 16px",
-                    fontSize: "13px",
-                    color: "#2b542c",
-                    marginBottom: "28px",
-                  }}
-                >
-                  ✓ Verified Purchase — your review will be marked as a verified
-                  purchase and will only appear after approval.
-                </div>
+                <div className="review-form-body">
+                  <div className="review-field">
+                    <label>Your Rating</label>
+                    <div className="rating-stars rating-stars-lg">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          className={`star${n <= reviewRating ? " active" : ""}`}
+                          onClick={() => setReviewRating(n)}
+                          aria-label={`Rate ${n} star${n > 1 ? "s" : ""}`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <span className="rating-label">
+                      {reviewRating
+                        ? `${ratingLabels[reviewRating]} (${reviewRating} / 5)`
+                        : "Tap a star to rate"}
+                    </span>
+                  </div>
 
-                <button
-                  type="submit"
-                  className="btn"
-                  style={{ width: "100%", padding: "15px 0", fontSize: "14px" }}
-                  disabled={submittingReview}
-                >
-                  {submittingReview ? "Submitting..." : "SUBMIT REVIEW"}
-                </button>
+                  <div className="review-field">
+                    <label>Your Review</label>
+                    <textarea
+                      className="review-input review-textarea"
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                      maxLength={1000}
+                      placeholder="Tell us what you thought about the book..."
+                      rows={6}
+                    />
+                    <div className="review-counter">
+                      {reviewText.length} / 1000
+                    </div>
+                  </div>
+
+                  <div className="review-field">
+                    <label>Name</label>
+                    <input
+                      className="review-input"
+                      type="text"
+                      value={reviewerName}
+                      onChange={(e) => setReviewerName(e.target.value)}
+                      placeholder="Your display name"
+                    />
+                  </div>
+
+                  <div className="review-field">
+                    <label>Email</label>
+                    <input
+                      className="review-input review-input-disabled"
+                      type="email"
+                      value={reviewContext?.email || ""}
+                      readOnly
+                      disabled
+                    />
+                    <p className="review-hint">
+                      Your email is used only to verify your purchase and is
+                      never shown publicly.
+                    </p>
+                  </div>
+
+                  <div className="review-verified">
+                    <span className="review-verified-badge">Verified Purchase</span>
+                    <p>
+                      Your review will be marked as a verified purchase and will
+                      appear only after approval.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="review-submit"
+                    disabled={submittingReview}
+                  >
+                    {submittingReview ? "Submitting…" : "Submit Review"}
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -1444,45 +1460,39 @@ function App() {
 
         {/* SCREEN 5: Review submission confirmation */}
         {currentPage === "review-thanks" && (
-          <div
-            style={{
-              maxWidth: "600px",
-              margin: "0 auto",
-              textAlign: "center",
-              padding: "40px 0",
-            }}
-          >
-            <span
-              className="ion-ios-checkmark-outline"
-              style={{ fontSize: "72px", color: "var(--color-success)" }}
-            ></span>
-            <h1>Thank You!</h1>
-            <p
-              style={{
-                fontSize: "16px",
-                marginBottom: "30px",
-              }}
-            >
-              Your review has been submitted successfully and is awaiting
-              approval. Once approved, your review will appear in our readers'
-              reviews.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <button
-                className="btn"
-                onClick={() => setCurrentPage("reviews")}
-              >
-                Read Reader Reviews
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  setCurrentPage("store");
-                  resetFormState();
-                }}
-              >
-                Return to Book Page
-              </button>
+          <div className="review-state review-state-center">
+            <img
+              src="/img/resilience_cover.png"
+              alt="RESILIENCE book cover"
+              className="review-state-cover"
+            />
+            <div className="review-state-icon success">
+              <span className="ion-ios-checkmark-outline"></span>
+            </div>
+            <div className="review-thanks-card">
+              <span className="review-hero-kicker">Thank You</span>
+              <h1>Review Submitted</h1>
+              <p>
+                Your review has been submitted successfully and is awaiting
+                approval. Once approved, it will appear in our readers' reviews.
+              </p>
+              <div className="review-state-actions">
+                <button
+                  className="btn"
+                  onClick={() => setCurrentPage("reviews")}
+                >
+                  Read Reader Reviews
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setCurrentPage("store");
+                    resetFormState();
+                  }}
+                >
+                  Return to Book Page
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1492,105 +1502,128 @@ function App() {
           <div
             style={{ maxWidth: "760px", margin: "0 auto", padding: "20px 0" }}
           >
-            <div style={{ textAlign: "center", marginBottom: "40px" }}>
+            <div className="reviews-hero">
+              <span className="reviews-hero-kicker">Reader Reviews</span>
+              <div className="reviews-hero-cover">
+                <img
+                  src="/img/resilience_cover.png"
+                  alt="RESILIENCE book cover"
+                />
+              </div>
               <h1>What Readers Are Saying</h1>
-              {reviewSummary && reviewSummary.total > 0 ? (
-                <>
-                  <span
-                    className="reviews-summary-stars"
-                    aria-label={`Average rating ${reviewSummary.averageRating} out of 5`}
-                  >
-                    {"★".repeat(Math.round(reviewSummary.averageRating))}
-                    {"☆".repeat(5 - Math.round(reviewSummary.averageRating))}
-                  </span>
-                  <p
-                    style={{
-                      fontSize: "20px",
-                      fontWeight: "600",
-                      color: "var(--color-dark)",
-                      marginTop: "8px",
-                    }}
-                  >
-                    {reviewSummary.averageRating} / 5
-                  </p>
-                  <p style={{ fontSize: "15px" }}>
-                    Based on {reviewSummary.total} review
-                    {reviewSummary.total === 1 ? "" : "s"}
-                  </p>
-                  <div className="rating-breakdown">
-                    {[5, 4, 3, 2, 1].map((n) => (
-                      <div key={n} className="breakdown-row">
-                        <span>{n} ★</span>
-                        <span>
-                          {reviewSummary.breakdown?.[n] || 0}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p>No approved reviews yet. Be the first to leave one after your purchase.</p>
-              )}
-
-              {reviewSummary && reviewSummary.total > 0 && (
-                <div
-                  style={{
-                    marginTop: "20px",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: "8px",
-                    fontSize: "13px",
-                  }}
-                >
-                  <label htmlFor="review-sort">Sort:</label>
-                  <select
-                    id="review-sort"
-                    value={reviewSort}
-                    onChange={(e) => setReviewSort(e.target.value)}
-                    style={{
-                      padding: "6px 10px",
-                      border: "1px solid #ddd",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    <option value="recent">Most Recent</option>
-                    <option value="highest">Highest Rated</option>
-                    <option value="lowest">Lowest Rated</option>
-                  </select>
-                </div>
-              )}
+              <p className="reviews-hero-sub">
+                {!reviewSummary || reviewSummary.total === 0
+                  ? "Be the first to share your thoughts on RESILIENCE."
+                  : "Honest words from readers of RESILIENCE"}
+              </p>
+              <span className="reviews-pill">
+                <span className="reviews-pill-check">✓</span> Verified Reader
+                Reviews
+              </span>
             </div>
 
-            {displayPublicReviews.length === 0 ? (
-              <p style={{ textAlign: "center", padding: "40px 0" }}>
-                Be the first to leave a review after your purchase.
-              </p>
-            ) : (
-              displayPublicReviews.map((r) => (
-                <div key={r.id} className="review-card">
-                  <div
-                    className="review-stars"
-                    aria-label={`${r.rating} out of 5 stars`}
+            {reviewSummary && reviewSummary.total > 0 && (
+              <div className="reviews-sort">
+                <span className="reviews-sort-label">Sort</span>
+                {[
+                  ["recent", "Most Recent"],
+                  ["highest", "Highest Rated"],
+                  ["lowest", "Lowest Rated"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    className={reviewSort === value ? "active" : ""}
+                    onClick={() => {
+                      setReviewSort(value);
+                      setVisibleReviewCount(4);
+                    }}
+                    type="button"
                   >
-                    {"★".repeat(r.rating)}
-                    {"☆".repeat(5 - r.rating)}
-                    {r.featured && (
-                      <span className="featured-badge">Featured</span>
-                    )}
-                  </div>
-                  <p className="review-text">"{r.review}"</p>
-                  <div className="review-meta">
-                    <strong>{r.customerName}</strong>
-                    {r.verified && (
-                      <span className="verified-badge">
-                        ✓ Verified Purchase{r.format ? ` · ${r.format}` : ""}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))
+                    {label}
+                  </button>
+                ))}
+              </div>
             )}
+
+            {reviewsLoading ? (
+              <div className="review-skeletons">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="review-card review-skeleton-card">
+                    <div className="review-skeleton review-skeleton-stars" />
+                    <div className="review-skeleton review-skeleton-text" />
+                    <div className="review-skeleton review-skeleton-text short" />
+                    <div className="review-skeleton review-skeleton-avatar" />
+                  </div>
+                ))}
+              </div>
+            ) : displayPublicReviews.length === 0 ? (
+              <div className="reviews-empty">
+                <span className="reviews-empty-star">★</span>
+                <p>
+                  No approved reviews yet. Be the first to leave one after your
+                  purchase.
+                </p>
+              </div>
+            ) : (
+              <div className="reviews-list">
+                {visiblePublicReviews.map((r, i) => (
+                  <div
+                    key={r.id}
+                    className="review-card hover-lift"
+                    style={{ animationDelay: `${i * 80}ms` }}
+                  >
+                    <div
+                      className="review-stars reviews-stars-lg"
+                      aria-label={`${r.rating} out of 5 stars`}
+                    >
+                      {"★".repeat(r.rating)}
+                      {"☆".repeat(5 - r.rating)}
+                      {r.featured && (
+                        <span className="featured-badge">Featured</span>
+                      )}
+                    </div>
+                    <p className="review-text">"{r.review}"</p>
+                    <div className="review-meta reviews-meta-row">
+                      <span className="review-avatar">
+                        {(
+                          r.customerName || "?"
+                        )
+                          .split(" ")
+                          .map((w) => w[0])
+                          .slice(0, 2)
+                          .join("")
+                          .toUpperCase()}
+                      </span>
+                      <span className="reviews-meta-text">
+                        <strong>{r.customerName}</strong>
+                        {r.verified && (
+                          <span className="verified-badge">
+                            ✓ Verified Purchase
+                            {r.format ? ` · ${r.format}` : ""}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!reviewsLoading &&
+              displayPublicReviews.length > 0 &&
+              visibleReviewCount < displayPublicReviews.length && (
+                <div style={{ textAlign: "center", marginTop: "20px" }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() =>
+                      setVisibleReviewCount((n) => n + 4)
+                    }
+                  >
+                    Load More Reviews (
+                    {displayPublicReviews.length - visibleReviewCount} more)
+                  </button>
+                </div>
+              )}
 
             <div
               style={{ textAlign: "center", marginTop: "30px", display: "flex", gap: "10px", justifyContent: "center" }}
@@ -1598,12 +1631,14 @@ function App() {
               <button className="btn" onClick={() => setCurrentPage("store")}>
                 Purchase RESILIENCE
               </button>
-              <button
+              <a
                 className="btn btn-secondary"
-                onClick={() => setCurrentPage("store")}
+                href="https://thomasbaafi.com/"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                Back to Book Page
-              </button>
+                Read More
+              </a>
             </div>
           </div>
         )}
@@ -2006,20 +2041,193 @@ function App() {
                     </div>
                   )}
 
-                  {["orders", "products", "customers", "payments", "settings"].includes(
-                    adminPage,
-                  ) && (
-                    <div
-                      style={{
-                        padding: "40px",
-                        border: "1px solid var(--color-border)",
-                        textAlign: "center",
-                      }}
-                    >
-                      <h2>
-                        {adminPage.charAt(0).toUpperCase() + adminPage.slice(1)}
-                      </h2>
-                      <p>This section is not part of the reviews feature.</p>
+                  {adminPage === "orders" && (
+                    <div>
+                      <h1>Orders</h1>
+                      {adminOrders.length === 0 ? (
+                        <p
+                          style={{
+                            padding: "40px 0",
+                            textAlign: "center",
+                            color: "var(--color-medium)",
+                          }}
+                        >
+                          No orders yet.
+                        </p>
+                      ) : (
+                        <table className="admin-table">
+                          <thead>
+                            <tr>
+                              <th>Order</th>
+                              <th>Customer</th>
+                              <th>Product</th>
+                              <th>Total</th>
+                              <th>Payment</th>
+                              <th>Delivery</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {adminOrders.map((o) => {
+                              const isHardCopy = o.products?.some(
+                                (p) => p.format === "Hard Copy",
+                              );
+                              const delivery = adminDeliveries.find(
+                                (d) => d.orderId === o.id,
+                              );
+                              const deliveryStatus =
+                                delivery?.status || o.orderStatus;
+                              return (
+                                <tr key={o.id}>
+                                  <td>{o.id}</td>
+                                  <td>
+                                    {o.customer?.name}
+                                    <br />
+                                    <span
+                                      style={{
+                                        fontSize: "12px",
+                                        color: "var(--color-medium)",
+                                      }}
+                                    >
+                                      {o.customer?.email}
+                                      {isHardCopy && o.customer?.phone && (
+                                        <>
+                                          <br />
+                                          Phone: {o.customer.phone}
+                                        </>
+                                      )}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {o.products
+                                      ?.map((p) => p.name)
+                                      .join(", ") || "—"}
+                                  </td>
+                                  <td>GHS {Number(o.total || 0).toFixed(2)}</td>
+                                  <td>
+                                    <span
+                                      className={`status-badge ${(o.paymentStatus || "").toLowerCase()}`}
+                                    >
+                                      {o.paymentStatus || "—"}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {isHardCopy ? (
+                                      <>
+                                        {delivery && (
+                                          <div
+                                            style={{
+                                              fontSize: "13px",
+                                              lineHeight: "1.5",
+                                              marginBottom: "8px",
+                                            }}
+                                          >
+                                            {[delivery.address, delivery.city]
+                                              .filter(Boolean)
+                                              .join(", ")}
+                                            <br />
+                                            {[delivery.region, delivery.country]
+                                              .filter(Boolean)
+                                              .join(", ")}
+                                            {delivery.postalCode &&
+                                              `, ${delivery.postalCode}`}
+                                            {delivery.additionalInfo && (
+                                              <>
+                                                <br />
+                                                {delivery.additionalInfo}
+                                              </>
+                                            )}
+                                          </div>
+                                        )}
+                                        <select
+                                          value={deliveryStatus}
+                                          onChange={(e) =>
+                                            handleUpdateOrderStatus(
+                                              o.id,
+                                              e.target.value,
+                                            )
+                                          }
+                                          style={{
+                                            padding: "6px 8px",
+                                            border:
+                                              "1px solid var(--color-border)",
+                                            fontFamily: "inherit",
+                                            fontSize: "13px",
+                                          }}
+                                        >
+                                          {[
+                                            "Payment Received",
+                                            "Processing",
+                                            "Shipped",
+                                            "Delivered",
+                                            "Cancelled",
+                                          ].map((s) => (
+                                            <option key={s} value={s}>
+                                              {s}
+                                            </option>
+                                          ))}
+                                        </select>{" "}
+                                        {deliveryStatus === "Delivered" && (
+                                          <span className="status-badge approved">
+                                            Delivered
+                                          </span>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <span className="status-badge hidden">
+                                        Digital — {o.orderStatus || "Completed"}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {o.date
+                                      ? new Date(o.date).toLocaleDateString()
+                                      : "—"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
+
+                  {adminPage === "customers" && (
+                    <div>
+                      <h1>Customers</h1>
+                      {adminCustomers.length === 0 ? (
+                        <p
+                          style={{
+                            padding: "40px 0",
+                            textAlign: "center",
+                            color: "var(--color-medium)",
+                          }}
+                        >
+                          No customers yet.
+                        </p>
+                      ) : (
+                        <table className="admin-table">
+                          <thead>
+                            <tr>
+                              <th>Name</th>
+                              <th>Email</th>
+                              <th>Orders</th>
+                              <th>Total Spent</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {adminCustomers.map((c) => (
+                              <tr key={c.email}>
+                                <td>{c.name}</td>
+                                <td>{c.email}</td>
+                                <td>{c.orders}</td>
+                                <td>GHS {c.spent.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
                     </div>
                   )}
                 </div>
