@@ -15,7 +15,8 @@ function App() {
     const path = window.location.pathname;
     if (path.startsWith("/admin")) return "admin";
     if (path.startsWith("/reviews")) return "reviews";
-    if (new URLSearchParams(window.location.search).get("token")) return "review";
+    if (new URLSearchParams(window.location.search).get("token"))
+      return "review";
     return "store";
   });
   const [products, setProducts] = useState([]);
@@ -45,7 +46,7 @@ function App() {
 
   // Review flow (customer side)
   const [reviewToken, setReviewToken] = useState(() =>
-    new URLSearchParams(window.location.search).get("token")
+    new URLSearchParams(window.location.search).get("token"),
   );
   const [reviewContext, setReviewContext] = useState(null); // { orderId, name, email, product, format }
   const [reviewStatus, setReviewStatus] = useState("idle"); // idle, loading, ready, error, used
@@ -69,7 +70,7 @@ function App() {
   const [adminPassword, setAdminPassword] = useState("");
   const [adminLoginError, setAdminLoginError] = useState("");
   const [adminAuthed, setAdminAuthed] = useState(
-    () => sessionStorage.getItem("resilience_admin_token") || null
+    () => sessionStorage.getItem("resilience_admin_token") || null,
   );
   const [adminReviews, setAdminReviews] = useState([]);
   const [adminSummary, setAdminSummary] = useState(null);
@@ -95,7 +96,12 @@ function App() {
   // Verify the review token as soon as the review page opens
   useEffect(() => {
     if (currentPage !== "review" || !reviewToken) return;
-    if (reviewStatus === "ready" || reviewStatus === "error" || reviewStatus === "used") return;
+    if (
+      reviewStatus === "ready" ||
+      reviewStatus === "error" ||
+      reviewStatus === "used"
+    )
+      return;
     setReviewStatus("loading");
     fetch(`${API_URL}/reviews/verify?token=${encodeURIComponent(reviewToken)}`)
       .then((res) => {
@@ -413,7 +419,10 @@ function App() {
       body: JSON.stringify(payload),
     })
       .then((res) => {
-        if (!res.ok) return res.json().then((d) => { throw new Error(d.error || "Action failed."); });
+        if (!res.ok)
+          return res.json().then((d) => {
+            throw new Error(d.error || "Action failed.");
+          });
         return res.json();
       })
       .then(() => loadAdminReviews())
@@ -539,176 +548,177 @@ function App() {
         {/* SCREEN 1: Store / Product Page */}
         {currentPage === "store" && (
           <>
-          <div className="store-grid">
-            <div
-              className="store-cover"
-              style={{ textAlign: "center", padding: "20px" }}
-            >
-              <img
-                src="/img/resilience_cover.png"
-                alt="Resilience Book Cover"
-                className="hover-lift"
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: "480px",
-                  width: "auto",
-                  boxShadow: "0 15px 35px rgba(0,0,0,0.15)",
-                  border: "1px solid #ddd",
-                }}
-              />
-            </div>
-            <div
-              className="store-info"
-              style={{ textAlign: "left", padding: "20px" }}
-            >
-              <h1>RESILIENCE</h1>
-              <h2>By Thomas Akwasi Baafi</h2>
-              <p
-                style={{
-                  fontStyle: "italic",
-                  fontSize: "1.25rem",
-                  color: "var(--color-accent)",
-                }}
-              >
-                A Journey of Grit, Growth, and Innovation
-              </p>
-              <p style={{ fontSize: "17px" }}>
-                Resilience is the gripping autobiography of Thomas Akwasi Baafi.
-                It charts his remarkable path from a small, remote village in
-                Ghana, through the challenges of growing up in slums, to scaling
-                the heights of the enterprise software ecosystem in West Africa
-                as the founder and CEO of Bsystems.
-              </p>
-
+            <div className="store-grid">
               <div
-                style={{
-                  margin: "24px 0",
-                  borderTop: "1px solid #eee",
-                  paddingTop: "18px",
-                }}
+                className="store-cover"
+                style={{ textAlign: "center", padding: "20px" }}
               >
-                <h3 style={{ marginBottom: "15px" }}>Choose Format</h3>
-                <div className="format-selector-group">
-                  <button
-                    type="button"
-                    className={`format-card ${selectedFormat === "Hard Copy" ? "active" : ""}`}
-                    onClick={() => handleFormatChange("Hard Copy")}
-                  >
-                    <span className="format-check">✓</span>
-                    Hard Copy
-                    <span className="format-price">
-                      Physical delivery • GHS 0.30
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`format-card ${selectedFormat === "Audiobook" ? "active" : ""}`}
-                    onClick={() => handleFormatChange("Audiobook")}
-                  >
-                    <span className="format-check">✓</span>
-                    Audiobook
-                    <span className="format-price">
-                      Instant download • GHS 0.20
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`format-card ${selectedFormat === "Soft Copy" ? "active" : ""}`}
-                    onClick={() => handleFormatChange("Soft Copy")}
-                  >
-                    <span className="format-check">✓</span>
-                    Soft Copy
-                    <span className="format-price">eBook PDF • GHS 0.15</span>
-                  </button>
+                <img
+                  src="/img/resilience_cover.png"
+                  alt="Resilience Book Cover"
+                  className="hover-lift"
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "480px",
+                    width: "auto",
+                    boxShadow: "0 15px 35px rgba(0,0,0,0.15)",
+                    border: "1px solid #ddd",
+                  }}
+                />
+              </div>
+              <div
+                className="store-info"
+                style={{ textAlign: "left", padding: "20px" }}
+              >
+                <h1>RESILIENCE</h1>
+                <h2>By Thomas Akwasi Baafi</h2>
+                <p
+                  style={{
+                    fontStyle: "italic",
+                    fontSize: "1.25rem",
+                    color: "var(--color-accent)",
+                  }}
+                >
+                  A Journey of Grit, Growth, and Innovation
+                </p>
+                <p style={{ fontSize: "17px" }}>
+                  Resilience is the gripping autobiography of Thomas Akwasi
+                  Baafi. It charts his remarkable path from a small, remote
+                  village in Ghana, through the challenges of growing up in
+                  slums, to scaling the heights of the enterprise software
+                  ecosystem in West Africa.
+                </p>
+
+                <div
+                  style={{
+                    margin: "24px 0",
+                    borderTop: "1px solid #eee",
+                    paddingTop: "18px",
+                  }}
+                >
+                  <h3 style={{ marginBottom: "15px" }}>Choose Format</h3>
+                  <div className="format-selector-group">
+                    <button
+                      type="button"
+                      className={`format-card ${selectedFormat === "Hard Copy" ? "active" : ""}`}
+                      onClick={() => handleFormatChange("Hard Copy")}
+                    >
+                      <span className="format-check">✓</span>
+                      Hard Copy
+                      <span className="format-price">
+                        Physical delivery • GHS 0.30
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`format-card ${selectedFormat === "Audiobook" ? "active" : ""}`}
+                      onClick={() => handleFormatChange("Audiobook")}
+                    >
+                      <span className="format-check">✓</span>
+                      Audiobook
+                      <span className="format-price">
+                        Instant download • GHS 0.20
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`format-card ${selectedFormat === "Soft Copy" ? "active" : ""}`}
+                      onClick={() => handleFormatChange("Soft Copy")}
+                    >
+                      <span className="format-check">✓</span>
+                      Soft Copy
+                      <span className="format-price">eBook PDF • GHS 0.15</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div
-                style={{
-                  background: "#fcfcfc",
-                  padding: "20px",
-                  border: "1px solid #eee",
-                  marginBottom: "30px",
-                }}
-              >
-                {selectedFormat === "Hard Copy" && (
-                  <>
-                    <h3>Hard Copy Edition</h3>
-                    <p style={{ margin: 0, fontSize: "16px" }}>
-                      Premium printed version of Resilience. Dispatched to
-                      addresses across Ghana (Accra flat rate GHS{" "}
-                      {(cart?.deliveryFee || 0.1).toFixed(2)}). Expect delivery
-                      in 2-3 business days.
-                    </p>
-                  </>
-                )}
-                {selectedFormat === "Audiobook" && (
-                  <>
-                    <h3>Digital Audiobook Edition</h3>
-                    <p style={{ margin: 0, fontSize: "16px" }}>
-                      Digital MP3 download package. Playable on any device. Link
-                      is generated instantly on payment confirmation.
-                    </p>
-                  </>
-                )}
-                {selectedFormat === "Soft Copy" && (
-                  <>
-                    <h3>Digital eBook Edition</h3>
-                    <p style={{ margin: 0, fontSize: "16px" }}>
-                      Digital PDF & ePub eBook package. Readable on Kindle,
-                      tablets, phones, and computers. Link is generated
-                      instantly on payment confirmation.
-                    </p>
-                  </>
-                )}
-              </div>
+                <div
+                  style={{
+                    background: "#fcfcfc",
+                    padding: "20px",
+                    border: "1px solid #eee",
+                    marginBottom: "30px",
+                  }}
+                >
+                  {selectedFormat === "Hard Copy" && (
+                    <>
+                      <h3>Hard Copy Edition</h3>
+                      <p style={{ margin: 0, fontSize: "16px" }}>
+                        Premium printed version of Resilience. Dispatched to
+                        addresses across Ghana (Accra flat rate GHS{" "}
+                        {(cart?.deliveryFee || 0.1).toFixed(2)}). Expect
+                        delivery in 2-3 business days.
+                      </p>
+                    </>
+                  )}
+                  {selectedFormat === "Audiobook" && (
+                    <>
+                      <h3>Digital Audiobook Edition</h3>
+                      <p style={{ margin: 0, fontSize: "16px" }}>
+                        Digital MP3 download package. Playable on any device.
+                        Link is generated instantly on payment confirmation.
+                      </p>
+                    </>
+                  )}
+                  {selectedFormat === "Soft Copy" && (
+                    <>
+                      <h3>Digital eBook Edition</h3>
+                      <p style={{ margin: 0, fontSize: "16px" }}>
+                        Digital PDF & ePub eBook package. Readable on Kindle,
+                        tablets, phones, and computers. Link is generated
+                        instantly on payment confirmation.
+                      </p>
+                    </>
+                  )}
+                </div>
 
+                <button
+                  className="btn"
+                  style={{ width: "100%", padding: "15px 0", fontSize: "14px" }}
+                  onClick={() => setCurrentPage("checkout")}
+                >
+                  Purchase Format Now
+                </button>
+              </div>
+            </div>
+
+            {/* Reader reviews teaser */}
+            <div
+              style={{
+                marginTop: "60px",
+                paddingTop: "40px",
+                borderTop: "1px solid #eee",
+                textAlign: "center",
+              }}
+            >
+              <h3 style={{ fontSize: "1.3rem", letterSpacing: "3px" }}>
+                What Readers Are Saying
+              </h3>
+              {reviewSummary && reviewSummary.total > 0 && (
+                <p style={{ fontSize: "18px", color: "var(--color-dark)" }}>
+                  <span
+                    className="reviews-summary-stars"
+                    aria-label={`Average rating ${reviewSummary.averageRating} out of 5`}
+                  >
+                    {"★".repeat(Math.round(reviewSummary.averageRating))}
+                    {"☆".repeat(5 - Math.round(reviewSummary.averageRating))}
+                  </span>
+                  <br />
+                  <strong>{reviewSummary.averageRating} / 5</strong> ·{" "}
+                  {reviewSummary.total} Review
+                  {reviewSummary.total === 1 ? "" : "s"}
+                </p>
+              )}
+              {(!reviewSummary || reviewSummary.total === 0) && (
+                <p>Reader reviews will appear here soon.</p>
+              )}
               <button
-                className="btn"
-                style={{ width: "100%", padding: "15px 0", fontSize: "14px" }}
-                onClick={() => setCurrentPage("checkout")}
+                className="btn btn-secondary"
+                onClick={() => setCurrentPage("reviews")}
               >
-                Purchase Format Now
+                Read Reader Reviews
               </button>
             </div>
-          </div>
-
-          {/* Reader reviews teaser */}
-          <div
-            style={{
-              marginTop: "60px",
-              paddingTop: "40px",
-              borderTop: "1px solid #eee",
-              textAlign: "center",
-            }}
-          >
-            <h3 style={{ fontSize: "1.3rem", letterSpacing: "3px" }}>
-              What Readers Are Saying
-            </h3>
-            {reviewSummary && reviewSummary.total > 0 && (
-              <p style={{ fontSize: "18px", color: "var(--color-dark)" }}>
-                <span
-                  className="reviews-summary-stars"
-                  aria-label={`Average rating ${reviewSummary.averageRating} out of 5`}
-                >
-                  {"★".repeat(Math.round(reviewSummary.averageRating))}
-                  {"☆".repeat(5 - Math.round(reviewSummary.averageRating))}
-                </span>
-                <br />
-                <strong>{reviewSummary.averageRating} / 5</strong> ·{" "}
-                {reviewSummary.total} Review{reviewSummary.total === 1 ? "" : "s"}
-              </p>
-            )}
-            {(!reviewSummary || reviewSummary.total === 0) && (
-              <p>Reader reviews will appear here soon.</p>
-            )}
-            <button
-              className="btn btn-secondary"
-              onClick={() => setCurrentPage("reviews")}
-            >
-              Read Reader Reviews
-            </button>
-          </div>
           </>
         )}
 
@@ -1368,8 +1378,8 @@ function App() {
                   </div>
                   <h1>Share Your Experience</h1>
                   <p>
-                    We'd love to hear what you thought about{" "}
-                    <em>RESILIENCE</em>.
+                    We'd love to hear what you thought about <em>RESILIENCE</em>
+                    .
                   </p>
                   <div className="review-pill">
                     {reviewContext?.format || "Hard Copy"} · Order{" "}
@@ -1442,7 +1452,9 @@ function App() {
                   </div>
 
                   <div className="review-verified">
-                    <span className="review-verified-badge">Verified Purchase</span>
+                    <span className="review-verified-badge">
+                      Verified Purchase
+                    </span>
                     <p>
                       Your review will be marked as a verified purchase and will
                       appear only after approval.
@@ -1589,9 +1601,7 @@ function App() {
                     <p className="review-text">"{r.review}"</p>
                     <div className="review-meta reviews-meta-row">
                       <span className="review-avatar">
-                        {(
-                          r.customerName || "?"
-                        )
+                        {(r.customerName || "?")
                           .split(" ")
                           .map((w) => w[0])
                           .slice(0, 2)
@@ -1619,9 +1629,7 @@ function App() {
                 <div style={{ textAlign: "center", marginTop: "20px" }}>
                   <button
                     className="btn btn-secondary"
-                    onClick={() =>
-                      setVisibleReviewCount((n) => n + 4)
-                    }
+                    onClick={() => setVisibleReviewCount((n) => n + 4)}
                   >
                     Load More Reviews (
                     {sortedPublicReviews.length - visibleReviewCount} more)
@@ -1630,7 +1638,13 @@ function App() {
               )}
 
             <div
-              style={{ textAlign: "center", marginTop: "30px", display: "flex", gap: "10px", justifyContent: "center" }}
+              style={{
+                textAlign: "center",
+                marginTop: "30px",
+                display: "flex",
+                gap: "10px",
+                justifyContent: "center",
+              }}
             >
               <button className="btn" onClick={() => setCurrentPage("store")}>
                 Purchase RESILIENCE
@@ -1686,7 +1700,9 @@ function App() {
                     />
                   </div>
                   {adminLoginError && (
-                    <p style={{ color: "var(--color-error)", fontSize: "14px" }}>
+                    <p
+                      style={{ color: "var(--color-error)", fontSize: "14px" }}
+                    >
                       {adminLoginError}
                     </p>
                   )}
@@ -1804,9 +1820,13 @@ function App() {
                           >
                             <h3 style={{ marginBottom: "6px" }}>Reviewer</h3>
                             <p style={{ marginBottom: "4px" }}>
-                              <strong>{adminSelectedReview.customerName}</strong>
+                              <strong>
+                                {adminSelectedReview.customerName}
+                              </strong>
                             </p>
-                            <p style={{ fontSize: "14px", marginBottom: "20px" }}>
+                            <p
+                              style={{ fontSize: "14px", marginBottom: "20px" }}
+                            >
                               Email: {adminSelectedReview.customerEmail}
                             </p>
 
@@ -1833,29 +1853,46 @@ function App() {
                             </blockquote>
 
                             <h3 style={{ marginBottom: "6px" }}>Purchase</h3>
-                            <p style={{ fontSize: "14px", marginBottom: "4px" }}>
+                            <p
+                              style={{ fontSize: "14px", marginBottom: "4px" }}
+                            >
                               <strong>Product:</strong> RESILIENCE
                             </p>
-                            <p style={{ fontSize: "14px", marginBottom: "4px" }}>
-                              <strong>Format:</strong> {adminSelectedReview.format}
+                            <p
+                              style={{ fontSize: "14px", marginBottom: "4px" }}
+                            >
+                              <strong>Format:</strong>{" "}
+                              {adminSelectedReview.format}
                             </p>
-                            <p style={{ fontSize: "14px", marginBottom: "4px" }}>
-                              <strong>Order:</strong> {adminSelectedReview.orderId}
+                            <p
+                              style={{ fontSize: "14px", marginBottom: "4px" }}
+                            >
+                              <strong>Order:</strong>{" "}
+                              {adminSelectedReview.orderId}
                             </p>
-                            <p style={{ fontSize: "14px", marginBottom: "4px" }}>
+                            <p
+                              style={{ fontSize: "14px", marginBottom: "4px" }}
+                            >
                               <strong>Payment:</strong>{" "}
                               {adminSelectedReview.paymentStatus}
                             </p>
-                            <p style={{ fontSize: "14px", marginBottom: "4px" }}>
+                            <p
+                              style={{ fontSize: "14px", marginBottom: "4px" }}
+                            >
                               <strong>Verified Purchase:</strong>{" "}
                               {adminSelectedReview.verified ? "✓ Yes" : "No"}
                             </p>
-                            <p style={{ fontSize: "14px", marginBottom: "4px" }}>
+                            <p
+                              style={{ fontSize: "14px", marginBottom: "4px" }}
+                            >
                               <strong>Submitted:</strong>{" "}
-                              {new Date(adminSelectedReview.createdAt).toLocaleDateString(
-                                undefined,
-                                { year: "numeric", month: "long", day: "numeric" },
-                              )}
+                              {new Date(
+                                adminSelectedReview.createdAt,
+                              ).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
                             </p>
                           </div>
 
@@ -1947,17 +1984,22 @@ function App() {
                       ) : (
                         <>
                           <div className="admin-filters">
-                            {["All", "Pending", "Approved", "Rejected", "Hidden", "Featured"].map(
-                              (f) => (
-                                <button
-                                  key={f}
-                                  className={`filter-btn${adminFilter === f ? " active" : ""}`}
-                                  onClick={() => setAdminFilter(f)}
-                                >
-                                  {f}
-                                </button>
-                              ),
-                            )}
+                            {[
+                              "All",
+                              "Pending",
+                              "Approved",
+                              "Rejected",
+                              "Hidden",
+                              "Featured",
+                            ].map((f) => (
+                              <button
+                                key={f}
+                                className={`filter-btn${adminFilter === f ? " active" : ""}`}
+                                onClick={() => setAdminFilter(f)}
+                              >
+                                {f}
+                              </button>
+                            ))}
                           </div>
 
                           {filteredAdminReviews.length === 0 ? (
@@ -2230,7 +2272,7 @@ function App() {
                                     setExpandedCustomer(
                                       expandedCustomer === c.email
                                         ? null
-                                        : c.email
+                                        : c.email,
                                     )
                                   }
                                 >
@@ -2257,10 +2299,9 @@ function App() {
                                     >
                                       <div className="admin-customer-detail">
                                         {c.orders.map((o) => {
-                                          const delivery =
-                                            adminDeliveries.find(
-                                              (d) => d.orderId === o.id
-                                            );
+                                          const delivery = adminDeliveries.find(
+                                            (d) => d.orderId === o.id,
+                                          );
                                           return (
                                             <div
                                               key={o.id}
@@ -2278,7 +2319,9 @@ function App() {
                                                   GHS {o.total.toFixed(2)}
                                                 </span>
                                                 <span>
-                                                  {new Date(o.date).toLocaleDateString()}
+                                                  {new Date(
+                                                    o.date,
+                                                  ).toLocaleDateString()}
                                                 </span>
                                               </div>
                                               <div className="admin-customer-order-prods">
