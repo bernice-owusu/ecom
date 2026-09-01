@@ -82,6 +82,150 @@ function publicReview(r) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Renders a branded, elegant error page for download/entitlement failures.
+function renderErrorPage({ title, message, hint }) {
+  const shopUrl = (
+    process.env.SITE_BASE_URL ||
+    (process.env.VERCEL ? "https://shop.thomasbaafi.com" : "http://localhost:5173")
+  ).replace(/\/$/, "");
+
+  const safe = (s = "") =>
+    String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${safe(title)} · Thomas Baafi</title>
+<style>
+  :root {
+    --font-primary: 'Raleway', sans-serif;
+    --font-secondary: 'Montserrat', sans-serif;
+    --color-dark: #1f1f1f;
+    --color-medium: #5f5f5f;
+    --color-border: #e0e0e0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font-primary);
+    color: var(--color-medium);
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    max-width: 460px;
+    width: 100%;
+    text-align: center;
+    background: #ffffff;
+    border: 1px solid rgba(224, 224, 224, 0.7);
+    border-radius: 20px;
+    padding: 52px 40px 40px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04), 0 24px 60px rgba(0,0,0,0.18);
+  }
+  .badge {
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: linear-gradient(135deg, #fafafa, #f0f0f0);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+  }
+  .eyebrow {
+    font-family: var(--font-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--color-medium);
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-family: var(--font-secondary);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--color-dark);
+    line-height: 1.35;
+    margin-bottom: 14px;
+  }
+  p.message {
+    font-size: 15.5px;
+    line-height: 1.7;
+    color: var(--color-medium);
+    margin-bottom: 26px;
+  }
+  p.hint {
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: #8a8a8a;
+    margin-bottom: 30px;
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    display: inline-block;
+    background: var(--color-dark);
+    color: #fff;
+    border: 1px solid var(--color-dark);
+    padding: 13px 22px;
+    font-family: var(--font-secondary);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 999px;
+    transition: all 0.3s ease;
+  }
+  .btn:hover { background: transparent; color: var(--color-dark); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-dark);
+    border: 1px solid var(--color-border);
+  }
+  .btn-ghost:hover { border-color: var(--color-dark); background: #fcfcfc; }
+  .foot {
+    margin-top: 28px;
+    font-family: var(--font-secondary);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #9a9a9a;
+  }
+</style>
+</head>
+<body>
+  <div class="card" role="alert">
+    <div class="badge" aria-hidden="true">📖</div>
+    <p class="eyebrow">RESILIENCE · Thomas Baafi</p>
+    <h1>${safe(title)}</h1>
+    <p class="message">${safe(message)}</p>
+    ${hint ? `<p class="hint">${safe(hint)}</p>` : ""}
+    <div class="actions">
+      <a class="btn" href="${shopUrl}">Back to shop</a>
+      <a class="btn btn-ghost" href="mailto:info@thomasbaafi.com">Contact support</a>
+    </div>
+    <p class="foot">RESILIENCE &nbsp;·&nbsp; By Thomas Baafi</p>
+  </div>
+</body>
+</html>`;
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -393,24 +537,40 @@ app.post('/api/payment/verify', async (req, res) => {
 app.get('/api/audiobooks/download', async (req, res) => {
   const { token } = req.query;
   if (!token) {
-    return res.status(400).send('<h1>Error: Download token is required</h1>');
+    return res.status(400).send(renderErrorPage({
+      title: 'Download link missing',
+      message: 'This download link is incomplete. Please use the link that was sent to your email.',
+      hint: 'If the link still doesn\'t work, contact support and we\'ll get you sorted right away.'
+    }));
   }
 
   const db = await readDb();
   const entitlement = db.entitlements.find(e => e.downloadToken === token);
 
   if (!entitlement || !entitlement.active) {
-    return res.status(403).send('<h1>Error: Invalid or inactive download link</h1>');
+    return res.status(403).send(renderErrorPage({
+      title: 'Invalid download link',
+      message: 'This download link is no longer valid or hasn\'t been activated yet.',
+      hint: 'Please check the link in your confirmation email. If it still doesn\'t work, get in touch and we\'ll help.' 
+    }));
   }
 
   if (new Date(entitlement.expiration) < new Date()) {
     entitlement.active = false;
     await writeDb(db);
-    return res.status(410).send('<h1>Error: This download link has expired</h1>');
+    return res.status(410).send(renderErrorPage({
+      title: 'Download link expired',
+      message: 'Your download link has expired. Links are valid for a limited window to keep your purchase secure.',
+      hint: 'If you missed the window or need a fresh link, contact support and we\'ll send a new one.'
+    }));
   }
 
   if (entitlement.downloadCount >= entitlement.maxDownloads) {
-    return res.status(429).send(`<h1>Error: Download limit reached (Max ${MAX_DOWNLOADS} downloads)</h1>`);
+    return res.status(429).send(renderErrorPage({
+      title: 'Download limit reached',
+      message: `This link has reached its download limit of ${MAX_DOWNLOADS}. Each purchase includes a limited number of downloads to protect your content.`,
+      hint: 'Need another download? Just reach out to support and we\'ll restore access for you.'
+    }));
   }
 
   // Increment download count
@@ -423,7 +583,11 @@ app.get('/api/audiobooks/download', async (req, res) => {
 
   const secureUrl = (isSoftCopy ? process.env.EBOOK_STORAGE_URL : process.env.AUDIOBOOK_STORAGE_URL);
   if (!secureUrl) {
-    return res.status(500).send('<h1>Error: Download storage is not configured</h1>');
+    return res.status(500).send(renderErrorPage({
+      title: 'Download unavailable',
+      message: 'The download service is temporarily unavailable. Please try again in a few minutes.',
+      hint: 'No downloads were used while trying to load this file.'
+    }));
   }
 
   return res.redirect(secureUrl);
