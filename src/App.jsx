@@ -714,10 +714,10 @@ function App() {
                     <>
                       <h3>Digital eBook Edition</h3>
                       <p style={{ margin: 0, fontSize: "16px" }}>
-                        Digital EPUB ebook. Readable on Kindle, Apple
-                        Books, Google Play Books, Kobo, or any other
-                        EPUB-compatible reader. Link is generated instantly
-                        on payment confirmation.
+                        Digital EPUB ebook. Readable on Kindle, Apple Books,
+                        Google Play Books, Kobo, or any other EPUB-compatible
+                        reader. Link is generated instantly on payment
+                        confirmation.
                       </p>
                     </>
                   )}
@@ -1110,9 +1110,7 @@ function App() {
                         }}
                       >
                         <strong>Total Amount</strong>
-                        <strong>
-                          GHS {(cart?.price || 0).toFixed(2)}
-                        </strong>
+                        <strong>GHS {(cart?.price || 0).toFixed(2)}</strong>
                       </div>
 
                       {(() => {
@@ -1127,7 +1125,9 @@ function App() {
                           paymentStatus === "processing" ||
                           !detailsFilled;
                         const opacityStyle = isDisabled ? 0.7 : 1;
-                        const cursorStyle = isDisabled ? "not-allowed" : "pointer";
+                        const cursorStyle = isDisabled
+                          ? "not-allowed"
+                          : "pointer";
                         return (
                           <button
                             type="submit"
@@ -1145,13 +1145,17 @@ function App() {
                               gap: "8px",
                             }}
                           >
-                            {(checkoutSubmitting || paymentStatus === "processing") && (
+                            {(checkoutSubmitting ||
+                              paymentStatus === "processing") && (
                               <span
                                 className="ion-load-c"
-                                style={{ animation: "spin 1.2s linear infinite" }}
+                                style={{
+                                  animation: "spin 1.2s linear infinite",
+                                }}
                               ></span>
                             )}
-                            {checkoutSubmitting || paymentStatus === "processing"
+                            {checkoutSubmitting ||
+                            paymentStatus === "processing"
                               ? "Processing Payment..."
                               : "Authorize & Pay"}
                           </button>
@@ -2492,17 +2496,28 @@ function App() {
             </div>
             <h3 id="epub-modal-title">Before you download</h3>
             <p className="epub-modal-lead">
-              Your RESILIENCE Soft Copy is an{" "}
-              <strong>EPUB ebook</strong> — not a PDF. Open it with any
-              book-friendly reading app.
+              Your RESILIENCE Soft Copy is an <strong>EPUB ebook</strong> — not
+              a PDF. Open it with any book-friendly reading app.
             </p>
             <div className="epub-modal-apps">
               <span className="epub-modal-apps-label">Read it with</span>
               <ul>
-                <li><span className="epub-app-emoji">📱</span><span>Kindle</span></li>
-                <li><span className="epub-app-emoji">📚</span><span>Apple Books</span></li>
-                <li><span className="epub-app-emoji">▶️</span><span>Google Play Books</span></li>
-                <li><span className="epub-app-emoji">📖</span><span>Kobo</span></li>
+                <li>
+                  <span className="epub-app-emoji">📱</span>
+                  <span>Kindle</span>
+                </li>
+                <li>
+                  <span className="epub-app-emoji">📚</span>
+                  <span>Apple Books</span>
+                </li>
+                <li>
+                  <span className="epub-app-emoji">▶️</span>
+                  <span>Google Play Books</span>
+                </li>
+                <li>
+                  <span className="epub-app-emoji">📖</span>
+                  <span>Kobo</span>
+                </li>
               </ul>
             </div>
             <p className="epub-modal-note">
@@ -2518,7 +2533,7 @@ function App() {
                   window.location.href = `${API_URL}/audiobooks/download?token=${downloadToken}`;
                 }}
               >
-                Continue to Download
+                Download
               </button>
               <button
                 type="button"
