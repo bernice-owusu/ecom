@@ -14,16 +14,20 @@ const DOWNLOAD_VALID_DAYS = 3;
 function getApiBase() {
   return (
     process.env.DOWNLOAD_BASE_URL ||
-    (process.env.VERCEL ? "" : "http://localhost:5000")
-  );
+    (process.env.VERCEL
+      ? "https://shop.thomasbaafi.com"
+      : "http://localhost:5000")
+  ).replace(/\/$/, "");
 }
 
 // Base URL for customer-facing pages (the review link points here, not the API).
 function getSiteBase() {
   return (
     process.env.SITE_BASE_URL ||
-    (process.env.VERCEL ? "" : "http://localhost:5173")
-  );
+    (process.env.VERCEL
+      ? "https://shop.thomasbaafi.com"
+      : "http://localhost:5173")
+  ).replace(/\/$/, "");
 }
 
 let transporter = null;
