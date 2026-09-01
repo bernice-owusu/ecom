@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Fragment } from "react";
+import { toast } from "react-hot-toast";
 import "./index.css";
 
 // Config API domain (adjust if server is running elsewhere)
@@ -38,6 +39,7 @@ function App() {
 
   // Payment gateways simulation states
   const [paymentStatus, setPaymentStatus] = useState("idle"); // idle, processing, success, failed
+  const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
   const [downloadToken, setDownloadToken] = useState(null);
 
@@ -155,6 +157,11 @@ function App() {
     loadPublicReviews(currentPage);
   }, [currentPage]);
 
+  // Scroll to top on every page change so the new view starts at the top
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentPage]);
+
   // Refresh public reviews whenever the tab regains focus (e.g. after approving
   // in another tab) so newly approved reviews appear without a manual reload.
   useEffect(() => {
@@ -206,6 +213,8 @@ function App() {
       return;
     }
 
+    setCheckoutSubmitting(true);
+
     const payload = {
       customer: {
         name: custName,
@@ -245,6 +254,7 @@ function App() {
         payWithPaystack(data);
       })
       .catch((err) => {
+        setCheckoutSubmitting(false);
         alert(err.message || "Error occurred during checkout.");
       });
   };
@@ -278,6 +288,7 @@ function App() {
       onClose: function () {
         alert("Transaction was not completed. You closed the payment window.");
         setPaymentStatus("idle");
+        setCheckoutSubmitting(false);
       },
     });
     handler.openIframe();
@@ -304,11 +315,13 @@ function App() {
           setCurrentPage("success");
         } else {
           setPaymentStatus("failed");
+          setCheckoutSubmitting(false);
         }
       })
       .catch((err) => {
         console.error(err);
         setPaymentStatus("failed");
+        setCheckoutSubmitting(false);
         alert(err.message || "Verification failed");
       });
   };
@@ -425,8 +438,25 @@ function App() {
           });
         return res.json();
       })
-      .then(() => loadAdminReviews())
-      .catch((err) => alert(err.message));
+      .then((result) => {
+        loadAdminReviews();
+        const msg = result?.message;
+        toast.success(
+          msg ||
+            (payload.status === "Approved"
+              ? "Review approved"
+              : payload.status === "Rejected"
+                ? "Review rejected"
+                : payload.status === "Hidden"
+                  ? "Review hidden"
+                  : payload.featured
+                    ? "Review featured"
+                    : payload.featured === false
+                      ? "Review unfeatured"
+                      : "Review updated"),
+        );
+      })
+      .catch((err) => toast.error(err.message));
   };
 
   const adminDeleteReview = (id) => {
@@ -439,8 +469,11 @@ function App() {
         if (!res.ok) throw new Error("Delete failed.");
         return res.json();
       })
-      .then(() => loadAdminReviews())
-      .catch((err) => alert(err.message));
+      .then((result) => {
+        loadAdminReviews();
+        toast.success(result?.message || "Review deleted");
+      })
+      .catch((err) => toast.error(err.message));
   };
 
   const resetFormState = () => {
@@ -520,8 +553,9 @@ function App() {
               }
             : m,
         );
+        toast.success(`Order status updated to "${newStatus}"`);
       })
-      .catch((err) => alert(err.message));
+      .catch((err) => toast.error(err.message));
   };
 
   const sortedPublicReviews = publicReviews.slice().sort((a, b) => {
@@ -975,7 +1009,7 @@ function App() {
                           </label>
                           <input
                             type="text"
-                            placeholder="e.g. Opposite Bsystems Office"
+                            placeholder="e.g. Opposite Dansoman KFC"
                             value={additionalAddress}
                             onChange={(e) =>
                               setAdditionalAddress(e.target.value)
@@ -1090,22 +1124,56 @@ function App() {
                       <button
                         type="submit"
                         className="btn"
+                        disabled={
+                          checkoutSubmitting || paymentStatus === "processing"
+                        }
                         style={{
                           width: "100%",
                           padding: "14px 0",
                           marginTop: "10px",
+                          opacity:
+                            checkoutSubmitting || paymentStatus === "processing"
+                              ? 0.7
+                              : 1,
+                          cursor:
+                            checkoutSubmitting || paymentStatus === "processing"
+                              ? "not-allowed"
+                              : "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
                         }}
                       >
-                        Authorize & Pay
+                        {(checkoutSubmitting || paymentStatus === "processing") && (
+                          <span
+                            className="ion-load-c"
+                            style={{ animation: "spin 1.2s linear infinite" }}
+                          ></span>
+                        )}
+                        {checkoutSubmitting || paymentStatus === "processing"
+                          ? "Processing Payment..."
+                          : "Authorize & Pay"}
                       </button>
 
                       <button
                         type="button"
                         className="btn btn-secondary"
+                        disabled={
+                          checkoutSubmitting || paymentStatus === "processing"
+                        }
                         style={{
                           width: "100%",
                           padding: "14px 0",
                           marginTop: "10px",
+                          opacity:
+                            checkoutSubmitting || paymentStatus === "processing"
+                              ? 0.6
+                              : 1,
+                          cursor:
+                            checkoutSubmitting || paymentStatus === "processing"
+                              ? "not-allowed"
+                              : "pointer",
                         }}
                         onClick={() => setCurrentPage("store")}
                       >
@@ -1655,7 +1723,7 @@ function App() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Read More
+                Visit Website
               </a>
             </div>
           </div>
