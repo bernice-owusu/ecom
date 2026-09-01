@@ -20,7 +20,7 @@ const initialData = {
       description: "Thomas Akwasi Baafi's inspiring journey from a remote village in Ghana to a pioneering tech leader. Physical hardcover edition.",
       format: "Hard Copy",
       price: 0.3,
-      deliveryFee: 0.1,
+      deliveryFee: 0,
       currency: "GHS",
       active: true
     },
@@ -38,7 +38,7 @@ const initialData = {
       id: "prod-resilience-softcopy",
       name: "RESILIENCE (Soft Copy)",
       subtitle: "A Journey of Grit, Growth, and Innovation",
-      description: "Complete digital eBook edition in PDF and ePub formats. Link is generated instantly on payment confirmation.",
+      description: "Complete digital eBook edition in EPUB format. Readable on Kindle, Apple Books, Google Play Books, Kobo, or any other EPUB-compatible reader. Link is generated instantly on payment confirmation.",
       format: "Soft Copy",
       price: 0.15,
       currency: "GHS",

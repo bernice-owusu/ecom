@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Fragment } from "react";
+import React, { useState, useEffect, useRef, Fragment } from "react";
 import { toast } from "react-hot-toast";
 import "./index.css";
 
@@ -42,6 +42,10 @@ function App() {
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
   const [downloadToken, setDownloadToken] = useState(null);
+
+  // Soft Copy EPUB reader info modal
+  const [showEpubModal, setShowEpubModal] = useState(false);
+  const epubModalRef = useRef(null);
 
   // Admin stats
   const [adminMetrics, setAdminMetrics] = useState(null);
@@ -94,6 +98,17 @@ function App() {
       })
       .catch((err) => console.error("Error fetching products:", err));
   }, [selectedFormat, currentPage]);
+
+  // EPUB modal: focus management + Escape to close
+  useEffect(() => {
+    if (!showEpubModal) return;
+    if (epubModalRef.current) epubModalRef.current.focus();
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setShowEpubModal(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showEpubModal]);
 
   // Verify the review token as soon as the review page opens
   useEffect(() => {
@@ -640,7 +655,7 @@ function App() {
                       <span className="format-check">✓</span>
                       Hard Copy
                       <span className="format-price">
-                        Physical delivery • GHS 0.30
+                        Pay on delivery • GHS 0.30
                       </span>
                     </button>
                     <button
@@ -661,7 +676,9 @@ function App() {
                     >
                       <span className="format-check">✓</span>
                       Soft Copy
-                      <span className="format-price">eBook PDF • GHS 0.15</span>
+                      <span className="format-price">
+                        eBook (EPUB) • GHS 0.15
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -679,9 +696,8 @@ function App() {
                       <h3>Hard Copy Edition</h3>
                       <p style={{ margin: 0, fontSize: "16px" }}>
                         Premium printed version of Resilience. Dispatched to
-                        addresses across Ghana (Accra flat rate GHS{" "}
-                        {(cart?.deliveryFee || 0.1).toFixed(2)}). Expect
-                        delivery in 2-3 business days.
+                        addresses across Ghana. Delivery fee is payable on
+                        delivery. Expect delivery in 2-3 business days.
                       </p>
                     </>
                   )}
@@ -698,9 +714,10 @@ function App() {
                     <>
                       <h3>Digital eBook Edition</h3>
                       <p style={{ margin: 0, fontSize: "16px" }}>
-                        Digital PDF & ePub eBook package. Readable on Kindle,
-                        tablets, phones, and computers. Link is generated
-                        instantly on payment confirmation.
+                        Digital EPUB ebook. Readable on Kindle, Apple
+                        Books, Google Play Books, Kobo, or any other
+                        EPUB-compatible reader. Link is generated instantly
+                        on payment confirmation.
                       </p>
                     </>
                   )}
@@ -1082,23 +1099,6 @@ function App() {
                         <span>GHS {(cart?.price || 0).toFixed(2)}</span>
                       </div>
 
-                      {selectedFormat === "Hard Copy" && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            marginBottom: "15px",
-                            color: "#777",
-                            fontSize: "14px",
-                          }}
-                        >
-                          <span>Flat Delivery Fee</span>
-                          <span>
-                            GHS {(cart?.deliveryFee || 0.1).toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-
                       <div
                         style={{
                           borderTop: "1px solid #ddd",
@@ -1111,50 +1111,52 @@ function App() {
                       >
                         <strong>Total Amount</strong>
                         <strong>
-                          GHS{" "}
-                          {(
-                            (cart?.price || 0) +
-                            (selectedFormat === "Hard Copy"
-                              ? cart?.deliveryFee || 0.1
-                              : 0)
-                          ).toFixed(2)}
+                          GHS {(cart?.price || 0).toFixed(2)}
                         </strong>
                       </div>
 
-                      <button
-                        type="submit"
-                        className="btn"
-                        disabled={
-                          checkoutSubmitting || paymentStatus === "processing"
-                        }
-                        style={{
-                          width: "100%",
-                          padding: "14px 0",
-                          marginTop: "10px",
-                          opacity:
-                            checkoutSubmitting || paymentStatus === "processing"
-                              ? 0.7
-                              : 1,
-                          cursor:
-                            checkoutSubmitting || paymentStatus === "processing"
-                              ? "not-allowed"
-                              : "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        {(checkoutSubmitting || paymentStatus === "processing") && (
-                          <span
-                            className="ion-load-c"
-                            style={{ animation: "spin 1.2s linear infinite" }}
-                          ></span>
-                        )}
-                        {checkoutSubmitting || paymentStatus === "processing"
-                          ? "Processing Payment..."
-                          : "Authorize & Pay"}
-                      </button>
+                      {(() => {
+                        const detailsFilled =
+                          custName.trim() &&
+                          custEmail.trim() &&
+                          custPhone.trim() &&
+                          (selectedFormat !== "Hard Copy" ||
+                            (city.trim() && address.trim()));
+                        const isDisabled =
+                          checkoutSubmitting ||
+                          paymentStatus === "processing" ||
+                          !detailsFilled;
+                        const opacityStyle = isDisabled ? 0.7 : 1;
+                        const cursorStyle = isDisabled ? "not-allowed" : "pointer";
+                        return (
+                          <button
+                            type="submit"
+                            className="btn"
+                            disabled={isDisabled}
+                            style={{
+                              width: "100%",
+                              padding: "14px 0",
+                              marginTop: "10px",
+                              opacity: opacityStyle,
+                              cursor: cursorStyle,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            {(checkoutSubmitting || paymentStatus === "processing") && (
+                              <span
+                                className="ion-load-c"
+                                style={{ animation: "spin 1.2s linear infinite" }}
+                              ></span>
+                            )}
+                            {checkoutSubmitting || paymentStatus === "processing"
+                              ? "Processing Payment..."
+                              : "Authorize & Pay"}
+                          </button>
+                        );
+                      })()}
 
                       <button
                         type="button"
@@ -1242,12 +1244,7 @@ function App() {
               </p>
               <p style={{ fontSize: "14px", marginBottom: "20px" }}>
                 <strong>Amount Paid:</strong> GHS{" "}
-                {(
-                  (cart?.price || 0) +
-                  (selectedFormat === "Hard Copy"
-                    ? cart?.deliveryFee || 0.1
-                    : 0)
-                ).toFixed(2)}
+                {(cart?.price || 0).toFixed(2)}
               </p>
 
               {selectedFormat === "Hard Copy" && (
@@ -1307,24 +1304,40 @@ function App() {
               selectedFormat === "Soft Copy") &&
               downloadToken && (
                 <div style={{ marginBottom: "40px" }}>
-                  <a
-                    href={`${API_URL}/audiobooks/download?token=${downloadToken}`}
-                    className="btn"
-                    style={{
-                      width: "100%",
-                      padding: "15px 0",
-                      fontSize: "14px",
-                    }}
-                  >
-                    <span
-                      className="ion-android-download"
-                      style={{ marginRight: "10px" }}
-                    ></span>
-                    Download{" "}
-                    {selectedFormat === "Soft Copy"
-                      ? "eBook (PDF)"
-                      : "Audiobook (MP3)"}
-                  </a>
+                  {selectedFormat === "Soft Copy" ? (
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setShowEpubModal(true)}
+                      style={{
+                        width: "100%",
+                        padding: "15px 0",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <span
+                        className="ion-android-download"
+                        style={{ marginRight: "10px" }}
+                      ></span>
+                      Download eBook (EPUB)
+                    </button>
+                  ) : (
+                    <a
+                      href={`${API_URL}/audiobooks/download?token=${downloadToken}`}
+                      className="btn"
+                      style={{
+                        width: "100%",
+                        padding: "15px 0",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <span
+                        className="ion-android-download"
+                        style={{ marginRight: "10px" }}
+                      ></span>
+                      Download Audiobook (MP3)
+                    </a>
+                  )}
                 </div>
               )}
 
@@ -2450,6 +2463,74 @@ function App() {
           </div>
         )}
       </main>
+
+      {showEpubModal && (
+        <div
+          className="epub-modal-overlay"
+          role="presentation"
+          onClick={() => setShowEpubModal(false)}
+        >
+          <div
+            className="epub-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="epub-modal-title"
+            tabIndex={-1}
+            ref={epubModalRef}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="epub-modal-close"
+              aria-label="Close"
+              onClick={() => setShowEpubModal(false)}
+            >
+              ×
+            </button>
+            <div className="epub-modal-head" aria-hidden="true">
+              <span className="epub-modal-icon">📖</span>
+            </div>
+            <h3 id="epub-modal-title">Before you download</h3>
+            <p className="epub-modal-lead">
+              Your RESILIENCE Soft Copy is an{" "}
+              <strong>EPUB ebook</strong> — not a PDF. Open it with any
+              book-friendly reading app.
+            </p>
+            <div className="epub-modal-apps">
+              <span className="epub-modal-apps-label">Read it with</span>
+              <ul>
+                <li><span className="epub-app-emoji">📱</span><span>Kindle</span></li>
+                <li><span className="epub-app-emoji">📚</span><span>Apple Books</span></li>
+                <li><span className="epub-app-emoji">▶️</span><span>Google Play Books</span></li>
+                <li><span className="epub-app-emoji">📖</span><span>Kobo</span></li>
+              </ul>
+            </div>
+            <p className="epub-modal-note">
+              Once downloaded, open the <code>resilience.epub</code> file with
+              any compatible ebook reader to start reading.
+            </p>
+            <div className="epub-modal-actions">
+              <button
+                type="button"
+                className="btn epub-modal-primary"
+                onClick={() => {
+                  setShowEpubModal(false);
+                  window.location.href = `${API_URL}/audiobooks/download?token=${downloadToken}`;
+                }}
+              >
+                Continue to Download
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowEpubModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -142,7 +142,7 @@ app.post('/api/checkout', async (req, res) => {
   const physicalItem = orderedProducts.find(p => p.format === 'Hard Copy');
   const isPhysical = !!physicalItem;
   const hardCopyProduct = db.products.find(p => p.format === 'Hard Copy');
-  const deliveryFee = physicalItem ? (hardCopyProduct?.deliveryFee || 0.1) : 0;
+  const deliveryFee = physicalItem ? (hardCopyProduct?.deliveryFee || 0) : 0;
   const total = subtotal + deliveryFee;
 
   const newOrder = {
