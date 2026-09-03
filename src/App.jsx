@@ -69,7 +69,7 @@ function App() {
   const [reviewSummary, setReviewSummary] = useState(null);
   const [reviewSort, setReviewSort] = useState("recent");
   const [reviewsLoading, setReviewsLoading] = useState(true);
-  const [visibleReviewCount, setVisibleReviewCount] = useState(4);
+  const [visibleReviewCount, setVisibleReviewCount] = useState(12);
 
   // Admin dashboard
   const [adminPage, setAdminPage] = useState("reviews"); // dashboard, reviews, others
@@ -1600,26 +1600,24 @@ function App() {
 
         {/* SCREEN 6: Public reviews page */}
         {currentPage === "reviews" && (
-          <div
-            style={{ maxWidth: "760px", margin: "0 auto", padding: "20px 0" }}
-          >
-            <div className="reviews-hero">
-              <span className="reviews-hero-kicker">Reader Reviews</span>
-              <div className="reviews-hero-cover">
-                <img
-                  src="/img/resilience_cover.png"
-                  alt="RESILIENCE book cover"
-                />
+          <div className="reviews-page">
+            <div className="reviews-summary-bar">
+              <div className="reviews-summary-left">
+                <span className="reviews-summary-rating">
+                  {reviewSummary ? reviewSummary.averageRating : "—"}
+                </span>
+                <div className="reviews-summary-details">
+                  <span className="reviews-summary-bar-stars" aria-label={reviewSummary ? `Average rating ${reviewSummary.averageRating} out of 5` : "No ratings yet"}>
+                    {"★".repeat(reviewSummary ? Math.round(reviewSummary.averageRating) : 0)}
+                    {"☆".repeat(reviewSummary ? 5 - Math.round(reviewSummary.averageRating) : 5)}
+                  </span>
+                  <span className="reviews-summary-count">
+                    {reviewSummary ? `${reviewSummary.total} Review${reviewSummary.total === 1 ? "" : "s"}` : "No reviews yet"}
+                  </span>
+                </div>
               </div>
-              <h1>What Readers Are Saying</h1>
-              <p className="reviews-hero-sub">
-                {!reviewSummary || reviewSummary.total === 0
-                  ? "Be the first to share your thoughts on RESILIENCE."
-                  : "Honest words from readers of RESILIENCE"}
-              </p>
               <span className="reviews-pill">
-                <span className="reviews-pill-check">✓</span> Verified Reader
-                Reviews
+                <span className="reviews-pill-check">✓</span> Verified Reader Reviews
               </span>
             </div>
 
@@ -1636,7 +1634,7 @@ function App() {
                     className={reviewSort === value ? "active" : ""}
                     onClick={() => {
                       setReviewSort(value);
-                      setVisibleReviewCount(4);
+                      setVisibleReviewCount(12);
                     }}
                     type="button"
                   >
@@ -1647,8 +1645,8 @@ function App() {
             )}
 
             {reviewsLoading ? (
-              <div className="review-skeletons">
-                {[0, 1, 2].map((i) => (
+              <div className="reviews-grid">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
                   <div key={i} className="review-card review-skeleton-card">
                     <div className="review-skeleton review-skeleton-stars" />
                     <div className="review-skeleton review-skeleton-text" />
@@ -1660,28 +1658,23 @@ function App() {
             ) : sortedPublicReviews.length === 0 ? (
               <div className="reviews-empty">
                 <span className="reviews-empty-star">★</span>
-                <p>
-                  No approved reviews yet. Be the first to leave one after your
-                  purchase.
-                </p>
+                <p>No approved reviews yet. Be the first to leave one after your purchase.</p>
               </div>
             ) : (
-              <div className="reviews-list">
+              <div className="reviews-grid">
                 {visiblePublicReviews.map((r, i) => (
                   <div
                     key={r.id}
                     className="review-card hover-lift"
-                    style={{ animationDelay: `${i * 80}ms` }}
+                    style={{ animationDelay: `${i * 60}ms` }}
                   >
+                    {r.featured && <span className="featured-badge">Featured</span>}
                     <div
                       className="review-stars reviews-stars-lg"
                       aria-label={`${r.rating} out of 5 stars`}
                     >
                       {"★".repeat(r.rating)}
                       {"☆".repeat(5 - r.rating)}
-                      {r.featured && (
-                        <span className="featured-badge">Featured</span>
-                      )}
                     </div>
                     <p className="review-text">"{r.review}"</p>
                     <div className="review-meta reviews-meta-row">
@@ -1697,7 +1690,7 @@ function App() {
                         <strong>{r.customerName}</strong>
                         {r.verified && (
                           <span className="verified-badge">
-                            ✓ Verified Purchase
+                            ✓ Verified
                             {r.format ? ` · ${r.format}` : ""}
                           </span>
                         )}
@@ -1711,26 +1704,17 @@ function App() {
             {!reviewsLoading &&
               sortedPublicReviews.length > 0 &&
               visibleReviewCount < sortedPublicReviews.length && (
-                <div style={{ textAlign: "center", marginTop: "20px" }}>
+                <div className="reviews-load-more">
                   <button
                     className="btn btn-secondary"
-                    onClick={() => setVisibleReviewCount((n) => n + 4)}
+                    onClick={() => setVisibleReviewCount((n) => n + 12)}
                   >
-                    Load More Reviews (
-                    {sortedPublicReviews.length - visibleReviewCount} more)
+                    Load More Reviews ({sortedPublicReviews.length - visibleReviewCount} remaining)
                   </button>
                 </div>
               )}
 
-            <div
-              style={{
-                textAlign: "center",
-                marginTop: "30px",
-                display: "flex",
-                gap: "10px",
-                justifyContent: "center",
-              }}
-            >
+            <div className="reviews-page-actions">
               <button className="btn" onClick={() => setCurrentPage("store")}>
                 Purchase RESILIENCE
               </button>
